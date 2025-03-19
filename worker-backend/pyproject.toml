@@ -1,0 +1,45 @@
+[tool.poetry]
+name = "cuemeet-worker-backend"
+version = "0.1.0"
+description = ""
+authors = ["CueCard Dev <support@cuecard.ai>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+django = "^4.2.16"
+djangorestframework = "^3.15.1"
+django-cors-headers = "^4.3.1"
+boto3 = "^1.34.118"
+django-filter = "^24.2"
+redis = "^5.0.4"
+djangorestframework-simplejwt = "^5.3.1"
+responses = "^0.25.0"
+django-environ = "^0.11.2"
+asyncio = "^3.4.3"
+drf-yasg = "^1.21.7"
+gunicorn = "^22.0.0"
+python-dotenv = "^1.0.1"
+psycopg2-binary = "^2.9.9"
+urllib3 = "^2.2.1"
+celery = "^5.4.0"
+flower = "^2.0.1"
+djangorestframework-bulk = "^0.2.1"
+pillow = "^10.4.0"
+highlight-io = "^0.8.6"
+assemblyai = "0.33.0"
+requests = "^2.32.3"
+rapidfuzz = "^3.10.1"
+nltk = "^3.9.1"
+grpclib = "^0.4.7"
+grpcio-tools = "1.62"
+django-socio-grpc = "0.23.1"
+django-restql = "^0.16.2"
+django-dirtyfields = "^1.9.6"
+authlib = "^1.5.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

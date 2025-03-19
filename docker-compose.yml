@@ -1,0 +1,92 @@
+
+
+services:
+  backend-api:
+    container_name: backend_rest
+    build:
+      context: ./api-backend
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    depends_on:
+      - pg-db
+      - redis
+
+  worker-api:
+    container_name: worker_rest
+    build:
+      context: ./worker-backend
+      dockerfile: Dockerfile
+    command: gunicorn worker_backend.wsgi:application --workers 4 -b 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - pg-db
+      - redis
+      - backend-api
+
+  worker-grpc:
+    container_name: grpc_server
+    build:
+      context: ./worker-backend
+      dockerfile: Dockerfile
+    command: python manage.py grpcrunaioserver 0.0.0.0:5500 --max-workers 4
+    ports:
+      - "5500:5500"
+    depends_on:
+      - pg-db
+      - redis
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  pg-db:
+    image: postgres:16
+    container_name: postgres_db
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./pg-db/init-multiple-databases.sql:/docker-entrypoint-initdb.d/init-multiple-databases.sql
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./pg-db/.db.env
+
+  celery_worker:
+    container_name: celery_worker
+    build:
+      context: ./worker-backend
+      dockerfile: Dockerfile
+    command: celery -A worker_backend worker --loglevel=info --concurrency=4
+    depends_on:
+      - redis
+      - pg-db
+      - worker-api
+
+  flower:
+    container_name: flower
+    build:
+      context: ./worker-backend
+      dockerfile: Dockerfile
+    command: celery -A worker_backend flower --port=5555
+    ports:
+      - "5556:5555"
+    depends_on:
+      - redis
+      - worker-grpc
+
+  documentation:
+    container_name: documentation
+    build:
+      context: ./documentation
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
+    driver: local

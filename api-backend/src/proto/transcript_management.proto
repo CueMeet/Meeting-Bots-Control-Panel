@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package worker_backend.transcript_management;
+
+import "google/protobuf/empty.proto";
+
+service FileManagementController {
+    rpc Create(FileManagementRequest) returns (FileManagementResponse) {}
+}
+
+service FileManagementListController {
+    rpc List(FileManagementListRequest) returns (FileManagementListResponse) {}
+}
+
+service HealthCheckController {
+    rpc healthCheck(google.protobuf.Empty) returns (HealthCheckhealthCheckResponse) {}
+}
+
+service TranscriptionLogListController {
+    rpc List(TranscriptionLogListRequest) returns (TranscriptionLogListResponse) {}
+}
+
+message FileManagementListRequest {
+}
+
+message FileManagementListResponse {
+    repeated FileManagementResponse results = 1;
+    int32 count = 2;
+}
+
+message FileManagementRequest {
+    optional string id = 1;
+    string raw_file_key = 2;
+    optional string meeting_title = 3;
+    optional string created_by_user_id = 8;
+}
+
+message FileManagementResponse {
+    optional string id = 1;
+    string raw_file_key = 2;
+    optional string audio_file_key = 3;
+    optional string meeting_title = 4;
+    optional string meeting_meeting_start_time = 5;
+    optional string meeting_meeting_end_time = 6;
+    optional string execution_id = 11;
+    optional int32 bot_used = 12;
+    optional int32 status = 13;
+    optional string created_by_user_id = 14;
+}
+
+message HealthCheckhealthCheckResponse {
+    string ServingStatus = 1;
+}
+
+message TranscriptionLogListRequest {
+}
+
+message TranscriptionLogListResponse {
+    repeated TranscriptionLogResponse results = 1;
+    int32 count = 2;
+}
+
+message TranscriptionLogResponse {
+    optional string id = 1;
+    optional string speaker = 2;
+    optional string transcription_start_time_milliseconds = 3;
+    optional string transcription_end_time_milliseconds = 4;
+    optional string transcription_Data = 5;
+}
