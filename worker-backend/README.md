@@ -40,7 +40,7 @@ make run           # Run with gunicorn (port 8000)
 
 ```bash
 make worker         # Run Celery worker (threaded, 4 concurrent)
-make worker-logs    # Run worker with logging to celery_worker.log
+make worker-logs    # Run worker with logging to celery-worker.log
 make worker-beats   # Run Celery beat scheduler
 make flower         # Run Flower monitoring (port 5555)
 ```

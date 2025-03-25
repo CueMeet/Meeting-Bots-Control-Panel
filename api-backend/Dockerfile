@@ -6,10 +6,9 @@ WORKDIR /app
 
 # Install aws-cli and jq using apt-get
 RUN apt-get update && apt-get install -y \
-    jq \
-    make \
     libssl-dev \ 
-    openssl \ 
+    jq --fix-missing \
+    make \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package.json and yarn.lock

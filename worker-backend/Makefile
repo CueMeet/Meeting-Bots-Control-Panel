@@ -26,7 +26,7 @@ poetry-shell:
 	poetry shell
 
 worker-logs: 
-	python -m celery -A worker_backend worker -l info --concurrency=4 --logfile=celery_worker.log
+	python -m celery -A worker_backend worker -l info --concurrency=4 --logfile=celery-worker.log
 
 worker: 
 	python -m celery -A worker_backend worker -l info --pool threads --concurrency=4

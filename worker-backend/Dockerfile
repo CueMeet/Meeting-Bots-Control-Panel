@@ -12,13 +12,13 @@ ENV PIP_DEFAULT_TIMEOUT=300
 # Install system dependencies required for your Django app and build tools
 RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends \
-    curl \
-    gcc \
-    libpq-dev \
-    python3-dev \
-    musl-dev \
-    libssl-dev \
-    jq && \
+      curl \
+      gcc \
+      libssl-dev \
+      libpq-dev \
+      python3-dev \
+      musl-dev \
+      jq --fix-missing && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -36,7 +36,7 @@ RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
 
 # Start the final build stage
-FROM public.ecr.aws/docker/library/python:3.10-slim-bullseye
+FROM public.ecr.aws/docker/library/python:3.10-slim-bullseye AS worker-backend
 
 # Create a non-root user
 RUN addgroup --system app && adduser --system --group app
@@ -57,7 +57,7 @@ RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends \
     libpq-dev \
     make \
-    jq && \
+    jq --fix-missing && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

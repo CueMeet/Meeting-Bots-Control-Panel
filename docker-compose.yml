@@ -1,4 +1,4 @@
-
+name: cuemeet
 
 services:
   backend-api:
@@ -6,6 +6,7 @@ services:
     build:
       context: ./api-backend
       dockerfile: Dockerfile
+    image: cuemeet:api-backend
     ports:
       - "4000:4000"
     depends_on:
@@ -16,7 +17,9 @@ services:
     container_name: worker_rest
     build:
       context: ./worker-backend
+      target: worker-backend
       dockerfile: Dockerfile
+    image: cuemeet:worker-backend
     command: gunicorn worker_backend.wsgi:application --workers 4 -b 0.0.0.0:8000
     ports:
       - "8000:8000"
@@ -24,18 +27,6 @@ services:
       - pg-db
       - redis
       - backend-api
-
-  worker-grpc:
-    container_name: grpc_server
-    build:
-      context: ./worker-backend
-      dockerfile: Dockerfile
-    command: python manage.py grpcrunaioserver 0.0.0.0:5500 --max-workers 4
-    ports:
-      - "5500:5500"
-    depends_on:
-      - pg-db
-      - redis
 
   redis:
     image: redis:alpine
@@ -56,36 +47,40 @@ services:
     env_file:
       - ./pg-db/.db.env
 
-  celery_worker:
-    container_name: celery_worker
-    build:
-      context: ./worker-backend
-      dockerfile: Dockerfile
+  worker-grpc:
+    container_name: grpc_server
+    image: cuemeet:worker-backend
+    command: python manage.py grpcrunaioserver 0.0.0.0:5500 --max-workers 4
+    ports:
+      - "5500:5500"
+    depends_on:
+      - pg-db
+      - redis
+      - backend-api
+      - worker-api
+
+  celery-worker:
+    container_name: celery-worker
+    image: cuemeet:worker-backend
     command: celery -A worker_backend worker --loglevel=info --concurrency=4
     depends_on:
-      - redis
       - pg-db
+      - redis
+      - backend-api
       - worker-api
 
   flower:
     container_name: flower
-    build:
-      context: ./worker-backend
-      dockerfile: Dockerfile
+    image: cuemeet:worker-backend
     command: celery -A worker_backend flower --port=5555
     ports:
       - "5556:5555"
     depends_on:
+      - pg-db
       - redis
-      - worker-grpc
-
-  documentation:
-    container_name: documentation
-    build:
-      context: ./documentation
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
+      - backend-api
+      - worker-api
+      - celery-worker
 
 volumes:
   postgres_data:
