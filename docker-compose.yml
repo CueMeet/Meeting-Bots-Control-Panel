@@ -3,6 +3,7 @@ name: cuemeet
 services:
   backend-api:
     container_name: backend_rest
+    restart: always
     build:
       context: ./api-backend
       dockerfile: Dockerfile
@@ -15,12 +16,14 @@ services:
 
   worker-api:
     container_name: worker_rest
+    restart: always
     build:
       context: ./worker-backend
       target: worker-backend
       dockerfile: Dockerfile
-    image: cuemeet:worker-backend
-    command: gunicorn worker_backend.wsgi:application --workers 4 -b 0.0.0.0:8000
+    image: cuemeet:worker-backend 
+    command: > # Migration is getting executed here
+      /bin/bash -c "python manage.py migrate && gunicorn worker_backend.wsgi:application --workers 4 -b 0.0.0.0:8000" 
     ports:
       - "8000:8000"
     depends_on:
@@ -32,8 +35,8 @@ services:
     image: redis:alpine
     container_name: redis
     restart: always
-    ports:
-      - "6379:6379"
+    # ports: ## Uncomment this if you want to expose redis port
+    #   - "6379:6379"
 
   pg-db:
     image: postgres:16
@@ -42,17 +45,18 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./pg-db/init-multiple-databases.sql:/docker-entrypoint-initdb.d/init-multiple-databases.sql
-    ports:
-      - "5432:5432"
+    # ports: ## Uncomment this if you want to expose postgres port
+    #   - "5432:5432"
     env_file:
       - ./pg-db/.db.env
 
   worker-grpc:
     container_name: grpc_server
+    restart: always
     image: cuemeet:worker-backend
     command: python manage.py grpcrunaioserver 0.0.0.0:5500 --max-workers 4
-    ports:
-      - "5500:5500"
+    # ports: ## Uncomment this if you want to expose grpc port
+    #   - "5500:5500"
     depends_on:
       - pg-db
       - redis
@@ -61,6 +65,7 @@ services:
 
   celery-worker:
     container_name: celery-worker
+    restart: always
     image: cuemeet:worker-backend
     command: celery -A worker_backend worker --loglevel=info --concurrency=4
     depends_on:
@@ -71,8 +76,9 @@ services:
 
   flower:
     container_name: flower
+    restart: always
     image: cuemeet:worker-backend
-    command: celery -A worker_backend flower --port=5555
+    command: celery -A worker_backend flower --port=5555 ## --basic-auth=FLOWER_AUTH_USER:FLOWER_AUTH_PASSWORD ## Uncomment this if you want to add basic auth
     ports:
       - "5556:5555"
     depends_on:
