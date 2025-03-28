@@ -2,7 +2,8 @@ name: Worker Backend ESLint
 
 on:
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
     paths:
       - 'worker-backend/**'
 
