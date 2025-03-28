@@ -1,4 +1,4 @@
-name: Worker Backend ESLint
+name: Worker Backend Build Status
 
 on:
   pull_request:
@@ -7,9 +7,13 @@ on:
     paths:
       - 'worker-backend/**'
 
+permissions:
+  pull-requests: write
+  issues: write
+
 jobs:
-  lint:
-    name: Run ESLint in Docker
+  build:
+    name: Build and Run Worker Backend
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,28 +25,28 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and Run ESLint
-        id: lint
+      - name: Build and Run
+        id: build
         run: |
-          docker build --target builder -t worker-backend-lint .
-          docker run --rm worker-backend-lint poetry run flake8 . > lint_output.txt 2>&1 || true
-          echo "lint_output<<EOF" >> $GITHUB_OUTPUT
-          cat lint_output.txt >> $GITHUB_OUTPUT
+          docker build -t worker-backend .
+          docker run -it worker-backend > build_output.txt 2>&1 || true
+          echo "build_output<<EOF" >> $GITHUB_OUTPUT
+          cat build_output.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Comment PR
         uses: actions/github-script@v7
         if: always()
         env:
-          LINT_OUTPUT: ${{ steps.lint.outputs.lint_output }}
+          BUILD_OUTPUT: ${{ steps.build.outputs.build_output }}
           JOB_STATUS: ${{ job.status }}
         with:
           script: |
-            const output = process.env.LINT_OUTPUT;
+            const output = process.env.BUILD_OUTPUT;
             const status = process.env.JOB_STATUS;
             const message = status === 'success' 
-              ? '✅ Worker Backend ESLint check passed!'
-              : '❌ Worker Backend ESLint check failed. Please fix the issues below:\n\n```\n' + output + '\n```';
+              ? '✅ Worker Backend build check passed!'
+              : '❌ Worker Backend build check failed. Please fix the issues below:\n\n```\n' + output + '\n```';
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
