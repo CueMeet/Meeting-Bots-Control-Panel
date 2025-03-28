@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "author": "CueCard Dev support@cuecard.ai",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "GPL-3.0-only",
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
