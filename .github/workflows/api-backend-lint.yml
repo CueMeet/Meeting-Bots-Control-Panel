@@ -1,0 +1,57 @@
+name: api-backend-eslint
+
+on:
+  pull_request:
+    branches: 
+      - main
+    paths:
+      - 'api-backend/**'
+
+jobs:
+  lint:
+    name: Run ESLint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api-backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run ESLint
+        id: lint
+        run: |
+          yarn lint > lint_output.txt 2>&1 || true
+          echo "lint_output<<EOF" >> $GITHUB_OUTPUT
+          cat lint_output.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment PR
+        uses: actions/github-script@v7
+        if: always()
+        env:
+          LINT_OUTPUT: ${{ steps.lint.outputs.lint_output }}
+          JOB_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const output = process.env.LINT_OUTPUT;
+            const status = process.env.JOB_STATUS;
+            const message = status === 'success' 
+              ? '✅ ESLint check passed!'
+              : '❌ ESLint check failed. Please fix the issues below:\n\n```\n' + output + '\n```';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            }); 
