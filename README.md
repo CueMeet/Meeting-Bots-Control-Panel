@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/banner.png" alt="Meeting Bots Control Panel Banner" />
+  <img src="https://i.postimg.cc/FRLZLSSF/Banner.png" alt="Meeting Bots Control Panel Banner" />
   <h1>CueMeet Meeting Bots Control Panel</h1>
 </div>
 
