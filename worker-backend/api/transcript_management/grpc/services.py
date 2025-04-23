@@ -5,6 +5,7 @@ from api.transcript_management.models import FileLog, TranscriptionLog
 from django_filters.rest_framework import DjangoFilterBackend
 from django_socio_grpc.filters import OrderingFilter
 from django_socio_grpc.decorators import grpc_action
+from api.transcript_management.worker import _transcript_generator_worker
 
 from .transcript_management_pb2 import HealthCheckhealthCheckResponse
 
@@ -14,9 +15,12 @@ class FileManagementService(AsyncCreateService):
     async def create(self, request, context):
         serializer = self.get_serializer(data=request)
         await serializer.is_valid(raise_exception=True)
-        instance = await serializer.save()
-        return self.get_serializer(instance)
 
+        instance = await serializer.save()
+        raw_file_key = instance.raw_file_key
+        if raw_file_key:
+            _transcript_generator_worker.delay(raw_file_key)
+        return self.get_serializer(instance)
 
 class FileManagementListService(AsyncListService):
     queryset = FileLog.objects.all()
