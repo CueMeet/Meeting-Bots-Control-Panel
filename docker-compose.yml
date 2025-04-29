@@ -51,10 +51,10 @@ services:
       - ./pg-db/.db.env
 
   worker-grpc:
-    container_name: grpc_server
+    container_name: grpc-server
     restart: always
     image: cuemeet:worker-backend
-    command: python manage.py grpcrunaioserver 0.0.0.0:5500 --max-workers 4
+    command: bash -c "echo 'Starting gRPC server...' && python manage.py grpcrunaioserver 0.0.0.0:5500 --max-workers 2 --verbosity 3"
     # ports: ## Uncomment this if you want to expose grpc port
     #   - "5500:5500"
     depends_on:
