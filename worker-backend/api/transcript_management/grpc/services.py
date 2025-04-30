@@ -1,4 +1,4 @@
-from django_socio_grpc.generics import AsyncListService, AsyncCreateService, GenericService
+from django_socio_grpc.generics import AsyncListService, GenericService
 from .serializers import FileManagementProtoSerializer, TranscriptionLogProtoSerializer
 from .filters import fileLogIdGrpcFilterBackend, IdGrpcFilterBackend
 from api.transcript_management.models import FileLog, TranscriptionLog
@@ -9,18 +9,25 @@ from api.transcript_management.worker import _transcript_generator_worker
 
 from .transcript_management_pb2 import HealthCheckhealthCheckResponse
 
-class FileManagementService(AsyncCreateService):
+
+class DocumentFileManagementService(GenericService):
     queryset = FileLog.objects.all()
     serializer_class = FileManagementProtoSerializer
-    async def create(self, request, context):
-        serializer = self.get_serializer(data=request)
-        await serializer.is_valid(raise_exception=True)
 
-        instance = await serializer.save()
+    @grpc_action(
+        request=FileManagementProtoSerializer,
+        response=FileManagementProtoSerializer,
+    )
+    async def DocumentCreate(self, request, context):
+        serializer = await self.aget_serializer(message=request)
+        await serializer.ais_valid(raise_exception=True)
+        
+        instance = await serializer.asave()
         raw_file_key = instance.raw_file_key
         if raw_file_key:
             _transcript_generator_worker.delay(raw_file_key)
-        return self.get_serializer(instance)
+        
+        return await serializer.amessage
 
 class FileManagementListService(AsyncListService):
     queryset = FileLog.objects.all()

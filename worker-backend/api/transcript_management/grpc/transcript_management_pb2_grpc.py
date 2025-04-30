@@ -6,7 +6,7 @@ from api.transcript_management.grpc import transcript_management_pb2 as api_dot_
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 
-class FileManagementControllerStub(object):
+class DocumentFileManagementControllerStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -15,42 +15,42 @@ class FileManagementControllerStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.Create = channel.unary_unary(
-                '/worker_backend.transcript_management.FileManagementController/Create',
+        self.DocumentCreate = channel.unary_unary(
+                '/worker_backend.transcript_management.DocumentFileManagementController/DocumentCreate',
                 request_serializer=api_dot_transcript__management_dot_grpc_dot_transcript__management__pb2.FileManagementRequest.SerializeToString,
                 response_deserializer=api_dot_transcript__management_dot_grpc_dot_transcript__management__pb2.FileManagementResponse.FromString,
                 )
 
 
-class FileManagementControllerServicer(object):
+class DocumentFileManagementControllerServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def Create(self, request, context):
+    def DocumentCreate(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_FileManagementControllerServicer_to_server(servicer, server):
+def add_DocumentFileManagementControllerServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'Create': grpc.unary_unary_rpc_method_handler(
-                    servicer.Create,
+            'DocumentCreate': grpc.unary_unary_rpc_method_handler(
+                    servicer.DocumentCreate,
                     request_deserializer=api_dot_transcript__management_dot_grpc_dot_transcript__management__pb2.FileManagementRequest.FromString,
                     response_serializer=api_dot_transcript__management_dot_grpc_dot_transcript__management__pb2.FileManagementResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'worker_backend.transcript_management.FileManagementController', rpc_method_handlers)
+            'worker_backend.transcript_management.DocumentFileManagementController', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class FileManagementController(object):
+class DocumentFileManagementController(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def Create(request,
+    def DocumentCreate(request,
             target,
             options=(),
             channel_credentials=None,
@@ -60,7 +60,7 @@ class FileManagementController(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/worker_backend.transcript_management.FileManagementController/Create',
+        return grpc.experimental.unary_unary(request, target, '/worker_backend.transcript_management.DocumentFileManagementController/DocumentCreate',
             api_dot_transcript__management_dot_grpc_dot_transcript__management__pb2.FileManagementRequest.SerializeToString,
             api_dot_transcript__management_dot_grpc_dot_transcript__management__pb2.FileManagementResponse.FromString,
             options, channel_credentials,

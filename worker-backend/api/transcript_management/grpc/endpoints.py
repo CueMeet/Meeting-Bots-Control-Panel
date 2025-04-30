@@ -1,8 +1,8 @@
-from .services import FileManagementService, FileManagementListService, TranscriptionLogListService, HealthCheck
+from .services import DocumentFileManagementService, FileManagementListService, TranscriptionLogListService, HealthCheck
 
 
 services = [
-    FileManagementService,
+    DocumentFileManagementService,
     FileManagementListService, 
     TranscriptionLogListService,
     HealthCheck
