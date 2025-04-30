@@ -67,7 +67,7 @@ services:
     container_name: celery-worker
     restart: always
     image: cuemeet:worker-backend
-    command: celery -A worker_backend worker --loglevel=info --concurrency=4
+    command: python -m celery -A worker_backend worker -l info --pool threads --concurrency=4 -E
     depends_on:
       - pg-db
       - redis
@@ -78,7 +78,7 @@ services:
     container_name: flower
     restart: always
     image: cuemeet:worker-backend
-    command: celery -A worker_backend flower --port=5555 ## --basic-auth=FLOWER_AUTH_USER:FLOWER_AUTH_PASSWORD ## Uncomment this if you want to add basic auth
+    command: bash -c "echo 'Starting celery flower dashboard...' && sleep 14 && python -m celery -A worker_backend flower --port=5555"  ## --basic-auth=FLOWER_AUTH_USER:FLOWER_AUTH_PASSWORD ## Uncomment this if you want to add basic auth
     ports:
       - "5556:5555"
     depends_on:
