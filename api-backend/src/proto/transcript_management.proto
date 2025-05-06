@@ -4,8 +4,8 @@ package worker_backend.transcript_management;
 
 import "google/protobuf/empty.proto";
 
-service FileManagementController {
-    rpc Create(FileManagementRequest) returns (FileManagementResponse) {}
+service DocumentFileManagementController {
+    rpc DocumentCreate(FileManagementRequest) returns (FileManagementResponse) {}
 }
 
 service FileManagementListController {
@@ -32,7 +32,7 @@ message FileManagementRequest {
     optional string id = 1;
     string raw_file_key = 2;
     optional string meeting_title = 3;
-    optional string created_by_user_id = 8;
+    optional string created_by_user_id = 4;
 }
 
 message FileManagementResponse {
@@ -42,10 +42,10 @@ message FileManagementResponse {
     optional string meeting_title = 4;
     optional string meeting_meeting_start_time = 5;
     optional string meeting_meeting_end_time = 6;
-    optional string execution_id = 11;
-    optional int32 bot_used = 12;
-    optional int32 status = 13;
-    optional string created_by_user_id = 14;
+    optional string execution_id = 7;
+    optional int32 bot_used = 8;
+    optional int32 status = 9;
+    optional string created_by_user_id = 10;
 }
 
 message HealthCheckhealthCheckResponse {
@@ -67,3 +67,4 @@ message TranscriptionLogResponse {
     optional string transcription_end_time_milliseconds = 4;
     optional string transcription_Data = 5;
 }
+

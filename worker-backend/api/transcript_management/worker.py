@@ -27,6 +27,7 @@ def _transcript_generator_worker(file_key: str):
     transcriber = aai.Transcriber()
 
     try:
+        logging.info(f"file key: {file_key}: {s3_client.bucket_name}")
         user_id, bot_type, execution_id, meeting_title = get_meta_data(file_key, s3_client)
         file_ref, created = FileLog.objects.update_or_create(
             raw_file_key=file_key,

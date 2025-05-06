@@ -43,6 +43,7 @@
     "sequelize": "^6.37.5",
     "sequelize-typescript": "^2.1.6",
     "ts-proto": "^2.6.1",
+    "ts-protoc-gen": "^0.15.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

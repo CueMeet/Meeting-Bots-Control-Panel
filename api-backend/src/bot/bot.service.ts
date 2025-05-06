@@ -26,6 +26,8 @@ import {
   TranscriptionLogResponse,
 } from 'src/interfaces/proto-generated/transcript_management';
 import { v4 as uuidv4 } from 'uuid';
+import { TASK_STOPPED_ERROR_CODES } from 'src/constants/ecs';
+
 @Injectable()
 export class BotService {
   constructor(
@@ -65,6 +67,19 @@ export class BotService {
     return this.initiateBot(bot.id);
   }
 
+  private mapPlatformToType(platform: BotPlatform): BotPlatformMappingType {
+    switch (platform) {
+      case BotPlatform.GOOGLE_MEET:
+        return BotPlatformMappingType.GOOGLE;
+      case BotPlatform.TEAMS:
+        return BotPlatformMappingType.MS_TEAMS;
+      case BotPlatform.ZOOM:
+        return BotPlatformMappingType.ZOOM;
+      default:
+        throw new Error(`Unknown platform: ${platform}`);
+    }
+  }
+
   async initiateBot(bot: Bot | string): Promise<Bot> {
     let botInstance: Bot;
     if (typeof bot === 'string') {
@@ -80,9 +95,12 @@ export class BotService {
     const metaData = {
       id: botInstance.id,
       user_id: botInstance.apiKey.userId,
-      bot_type: BotPlatformMappingType[botInstance.platform],
+      bot_type: botInstance.platform,
+      // bot_type: this.mapPlatformToType(botInstance.platform),
       ...(botInstance.title && { meeting_title: botInstance.title }),
     };
+
+    console.log('initiateBot metaData:', metaData);
 
     const { audioUrl, tarUrl, tarObjectName } =
       await this.generatePresignedUrls({
@@ -96,21 +114,6 @@ export class BotService {
       throw new InternalServerErrorException(
         'Failed to generate presigned url.',
       );
-
-    try {
-      await lastValueFrom(
-        this.workerService.createFileLog({
-          id: botInstance.id,
-          raw_file_key: tarObjectName,
-          ...(botInstance.title && { meeting_title: botInstance.title }),
-          ...(botInstance.apiKey.userId && {
-            created_by_user_id: botInstance.apiKey.userId,
-          }),
-        }),
-      );
-    } catch (e) {
-      console.log(e);
-    }
 
     let taskId;
     switch (botInstance.platform) {
@@ -240,6 +243,8 @@ export class BotService {
       'application/x-tar',
       metadata,
     );
+
+    console.log('Tar Url', tarUrl);
 
     return { audioUrl, tarUrl, audioObjectName, tarObjectName };
   }
@@ -386,5 +391,34 @@ export class BotService {
       total: transcript.count,
       hasMore: transcript.count > pagination.page_size * pagination.page,
     };
+  }
+
+  async findBotsWithNonErrorFailures(): Promise<Bot[]> {
+    const bots = await this.botModel.findAll({
+      where: {
+        status: { [Op.not]: ExecutionStatusLogEnum.FAILED },
+        taskId: { [Op.not]: null },
+        // Only get bots from the last 24 hours
+        createdAt: {
+          [Op.gte]: moment().subtract(24, 'hours').toDate()
+        }
+      },
+      include: [{ model: ApiKey, attributes: ['userId'] }]
+    });
+
+    // Filter bots to only those that failed for non-error reasons
+    const results = [];
+    for (const bot of bots) {
+      try {
+        const taskInfo = await this.ecsService.healthCheckTask(bot.taskId);
+        if (taskInfo?.lastStatus === 'STOPPED' && !TASK_STOPPED_ERROR_CODES.includes(taskInfo?.stopCode)) {
+          results.push(bot);
+        }
+      } catch (error) {
+        console.error(`Error checking task status for bot ${bot.id}:`, error);
+      }
+    }
+
+    return results;
   }
 }
