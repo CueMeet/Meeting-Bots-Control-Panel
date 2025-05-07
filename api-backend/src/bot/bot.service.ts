@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -34,6 +36,7 @@ export class BotService {
     @InjectModel(Bot)
     private botModel: typeof Bot,
     private readonly awsService: AwsService,
+    @Inject(forwardRef(() => ECSClientService))
     private readonly ecsService: ECSClientService,
     private readonly configService: ConfigService,
     private readonly workerService: WorkerService,
@@ -95,8 +98,7 @@ export class BotService {
     const metaData = {
       id: botInstance.id,
       user_id: botInstance.apiKey.userId,
-      bot_type: botInstance.platform,
-      // bot_type: this.mapPlatformToType(botInstance.platform),
+      bot_type: String(this.mapPlatformToType(botInstance.platform)),
       ...(botInstance.title && { meeting_title: botInstance.title }),
     };
 
@@ -152,6 +154,7 @@ export class BotService {
     await botInstance.update({
       taskId,
       status: ExecutionStatusLogEnum.STARTED,
+      tarFileKey: tarObjectName,
     });
     await botInstance.reload();
     return botInstance;
@@ -400,10 +403,10 @@ export class BotService {
         taskId: { [Op.not]: null },
         // Only get bots from the last 24 hours
         createdAt: {
-          [Op.gte]: moment().subtract(24, 'hours').toDate()
-        }
+          [Op.gte]: moment().subtract(24, 'hours').toDate(),
+        },
       },
-      include: [{ model: ApiKey, attributes: ['userId'] }]
+      include: [{ model: ApiKey, attributes: ['userId'] }],
     });
 
     // Filter bots to only those that failed for non-error reasons
@@ -411,7 +414,10 @@ export class BotService {
     for (const bot of bots) {
       try {
         const taskInfo = await this.ecsService.healthCheckTask(bot.taskId);
-        if (taskInfo?.lastStatus === 'STOPPED' && !TASK_STOPPED_ERROR_CODES.includes(taskInfo?.stopCode)) {
+        if (
+          taskInfo?.lastStatus === 'STOPPED' &&
+          !TASK_STOPPED_ERROR_CODES.includes(taskInfo?.stopCode)
+        ) {
           results.push(bot);
         }
       } catch (error) {
@@ -420,5 +426,33 @@ export class BotService {
     }
 
     return results;
+  }
+
+  async triggerTranscriptGeneration(botId: string): Promise<void> {
+    const bot = await this.botModel.findByPk(botId, {
+      include: [{ model: ApiKey, attributes: ['userId'] }],
+    });
+    if (!bot) throw new NotFoundException('Bot not found');
+
+    if (!bot.tarFileKey)
+      throw new BadRequestException('Bot has no tar file key');
+
+    try {
+      await lastValueFrom(
+        this.workerService.createFileLog({
+          id: bot.id,
+          raw_file_key: bot.tarFileKey,
+          ...(bot.title && { meeting_title: bot.title }),
+          ...(bot.apiKey.userId && {
+            created_by_user_id: bot.apiKey.userId,
+          }),
+        }),
+      );
+    } catch (error) {
+      console.error(
+        `Error triggering transcript generation for bot ${bot.id}:`,
+        error,
+      );
+    }
   }
 }

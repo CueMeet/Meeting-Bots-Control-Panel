@@ -1,11 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { CronExpression } from '@nestjs/schedule';
-import { Cron } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { lastValueFrom } from 'rxjs';
 import { ECSClientService } from 'src/aws/ecs.service';
 import { BotService } from 'src/bot/bot.service';
 import { WorkerService } from 'src/grpc/worker.service';
-import { v4 as uuidv4 } from 'uuid';
-import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class CronJobService {
@@ -25,7 +23,7 @@ export class CronJobService {
     await this.botService.initiateScheduledBot();
   }
 
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @Cron(CronExpression.EVERY_MINUTE)
   async checkBotStatusAndProcess(): Promise<void> {
     try {
       console.log('Checking bot status and processing');
@@ -36,55 +34,8 @@ export class CronJobService {
         console.log('Worker service is not healthy, skipping bot status check');
         return;
       }
-
       // Get bot status through ECS service
       await this.ecsService.syncTaskStatus();
-
-      // Find bots that have failed due to non-error conditions
-      const bots = await this.botService.findBotsWithNonErrorFailures();
-
-      console.log('Bots with non-error failures: ', bots);
-
-      // Process each bot that needs attention
-      for (const bot of bots) {
-        try {
-          // Generate presigned URLs to get the raw_file_key (tarObjectName)
-          const { tarObjectName } = await this.botService.generatePresignedUrls(
-            {
-              botId: bot.id,
-              userId: bot.apiKey.userId,
-              uuid: uuidv4(),
-              metadata: {
-                id: bot.id,
-                user_id: bot.apiKey.userId,
-                bot_type: bot.platform,
-                ...(bot.title && { meeting_title: bot.title }),
-              },
-            },
-          );
-
-          if (tarObjectName) {
-            // Make gRPC request to create file management entry using lastValueFrom
-            console.log(
-              'Making gRPC request to create file management entry to: ',
-              bot,
-            );
-            const res = await lastValueFrom(
-              this.workerService.createFileLog({
-                id: bot.id,
-                raw_file_key: tarObjectName,
-                ...(bot.title && { meeting_title: bot.title }),
-                ...(bot.apiKey.userId && {
-                  created_by_user_id: bot.apiKey.userId,
-                }),
-              }),
-            );
-            console.log('Create FileLog Response', res);
-          }
-        } catch (error) {
-          console.error(`Error processing bot ${bot.id}:`, error);
-        }
-      }
     } catch (error) {
       console.error('Error in bot status check cron job:', error);
     }
