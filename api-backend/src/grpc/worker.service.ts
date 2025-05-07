@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ClientGrpc } from '@nestjs/microservices';
 import { MICROSERVICES } from 'src/constants/grpc';
 import {
-  FileManagementController,
+  DocumentFileManagementController,
   HealthCheckController,
   FileManagementListController,
   TranscriptionLogListController,
@@ -29,8 +29,8 @@ export class WorkerService {
 
   onModuleInit() {
     this.fileManagementService =
-      this.client.getService<FileManagementController>(
-        'FileManagementController',
+      this.client.getService<DocumentFileManagementController>(
+        'DocumentFileManagementController',
       );
     this.healthCheckService = this.client.getService<HealthCheckController>(
       'HealthCheckController',
@@ -60,7 +60,7 @@ export class WorkerService {
       .add(this.deadlineInSeconds, 'seconds')
       .toDate();
 
-    return this.fileManagementService.Create(payload, { deadline });
+    return this.fileManagementService.DocumentCreate(payload, { deadline });
   }
 
   listFileLogs(payload: any): Observable<FileManagementListResponse> {

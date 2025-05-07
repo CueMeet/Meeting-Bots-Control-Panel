@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -26,12 +28,15 @@ import {
   TranscriptionLogResponse,
 } from 'src/interfaces/proto-generated/transcript_management';
 import { v4 as uuidv4 } from 'uuid';
+import { TASK_STOPPED_ERROR_CODES } from 'src/constants/ecs';
+
 @Injectable()
 export class BotService {
   constructor(
     @InjectModel(Bot)
     private botModel: typeof Bot,
     private readonly awsService: AwsService,
+    @Inject(forwardRef(() => ECSClientService))
     private readonly ecsService: ECSClientService,
     private readonly configService: ConfigService,
     private readonly workerService: WorkerService,
@@ -65,6 +70,19 @@ export class BotService {
     return this.initiateBot(bot.id);
   }
 
+  private mapPlatformToType(platform: BotPlatform): BotPlatformMappingType {
+    switch (platform) {
+      case BotPlatform.GOOGLE_MEET:
+        return BotPlatformMappingType.GOOGLE;
+      case BotPlatform.TEAMS:
+        return BotPlatformMappingType.MS_TEAMS;
+      case BotPlatform.ZOOM:
+        return BotPlatformMappingType.ZOOM;
+      default:
+        throw new Error(`Unknown platform: ${platform}`);
+    }
+  }
+
   async initiateBot(bot: Bot | string): Promise<Bot> {
     let botInstance: Bot;
     if (typeof bot === 'string') {
@@ -80,7 +98,7 @@ export class BotService {
     const metaData = {
       id: botInstance.id,
       user_id: botInstance.apiKey.userId,
-      bot_type: BotPlatformMappingType[botInstance.platform],
+      bot_type: String(this.mapPlatformToType(botInstance.platform)),
       ...(botInstance.title && { meeting_title: botInstance.title }),
     };
 
@@ -96,21 +114,6 @@ export class BotService {
       throw new InternalServerErrorException(
         'Failed to generate presigned url.',
       );
-
-    try {
-      await lastValueFrom(
-        this.workerService.createFileLog({
-          id: botInstance.id,
-          raw_file_key: tarObjectName,
-          ...(botInstance.title && { meeting_title: botInstance.title }),
-          ...(botInstance.apiKey.userId && {
-            created_by_user_id: botInstance.apiKey.userId,
-          }),
-        }),
-      );
-    } catch (e) {
-      console.log(e);
-    }
 
     let taskId;
     switch (botInstance.platform) {
@@ -149,6 +152,7 @@ export class BotService {
     await botInstance.update({
       taskId,
       status: ExecutionStatusLogEnum.STARTED,
+      tarFileKey: tarObjectName,
     });
     await botInstance.reload();
     return botInstance;
@@ -386,5 +390,65 @@ export class BotService {
       total: transcript.count,
       hasMore: transcript.count > pagination.page_size * pagination.page,
     };
+  }
+
+  async findBotsWithNonErrorFailures(): Promise<Bot[]> {
+    const bots = await this.botModel.findAll({
+      where: {
+        status: { [Op.not]: ExecutionStatusLogEnum.FAILED },
+        taskId: { [Op.not]: null },
+        // Only get bots from the last 24 hours
+        createdAt: {
+          [Op.gte]: moment().subtract(24, 'hours').toDate(),
+        },
+      },
+      include: [{ model: ApiKey, attributes: ['userId'] }],
+    });
+
+    // Filter bots to only those that failed for non-error reasons
+    const results = [];
+    for (const bot of bots) {
+      try {
+        const taskInfo = await this.ecsService.healthCheckTask(bot.taskId);
+        if (
+          taskInfo?.lastStatus === 'STOPPED' &&
+          !TASK_STOPPED_ERROR_CODES.includes(taskInfo?.stopCode)
+        ) {
+          results.push(bot);
+        }
+      } catch (error) {
+        console.error(`Error checking task status for bot ${bot.id}:`, error);
+      }
+    }
+
+    return results;
+  }
+
+  async triggerTranscriptGeneration(botId: string): Promise<void> {
+    const bot = await this.botModel.findByPk(botId, {
+      include: [{ model: ApiKey, attributes: ['userId'] }],
+    });
+    if (!bot) throw new NotFoundException('Bot not found');
+
+    if (!bot.tarFileKey)
+      throw new BadRequestException('Bot has no tar file key');
+
+    try {
+      await lastValueFrom(
+        this.workerService.createFileLog({
+          id: bot.id,
+          raw_file_key: bot.tarFileKey,
+          ...(bot.title && { meeting_title: bot.title }),
+          ...(bot.apiKey.userId && {
+            created_by_user_id: bot.apiKey.userId,
+          }),
+        }),
+      );
+    } catch (error) {
+      console.error(
+        `Error triggering transcript generation for bot ${bot.id}:`,
+        error,
+      );
+    }
   }
 }

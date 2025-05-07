@@ -119,6 +119,12 @@ export class Bot extends Model {
   status: ExecutionStatusLogEnum;
 
   @Column({
+    type: DataType.STRING,
+    allowNull: true,
+  })
+  tarFileKey: string;
+
+  @Column({
     type: DataType.JSONB,
     allowNull: true,
   })

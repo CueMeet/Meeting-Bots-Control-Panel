@@ -8,4 +8,4 @@ proto-generate:
 	--ts_proto_out=$(PROTO_OUT_DIR) \
 	-I $(PROTO_INCLUDE_DIR) \
 	$(PROTO_INCLUDE_DIR)/*.proto \
-	--ts_proto_opt=returnObservable=true,forceLong=long,useOptionals=true,esModuleInterop=true,outputEncodeMethods=false,outputJsonMethods=false,outputClientImpl=false,useProtoFieldName=true,snakeToCamel=false
+	--ts_proto_opt=returnObservable=true,forceLong=long,esModuleInterop=true,outputEncodeMethods=false,outputJsonMethods=false,outputClientImpl=false,useProtoFieldName=true,snakeToCamel=false

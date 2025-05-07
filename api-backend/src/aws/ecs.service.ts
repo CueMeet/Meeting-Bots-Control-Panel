@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import {
   ContainerOverride,
   DescribeTasksCommand,
@@ -30,6 +30,7 @@ import { TASK_STOPPED_ERROR_CODES } from 'src/constants/ecs';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Bot, ExecutionStatusLogEnum } from 'src/database/models/bot.model';
 import { InjectModel } from '@nestjs/sequelize';
+import { BotService } from 'src/bot/bot.service';
 interface TaskInfo {
   taskId?: string;
   lastStatus?: string;
@@ -53,6 +54,8 @@ export class ECSClientService {
     @InjectQueue(ECS_TASK_QUEUE)
     private readonly ecsTaskQueue: Queue,
     private readonly configService: ConfigService,
+    @Inject(forwardRef(() => BotService))
+    private readonly botService: BotService,
   ) {
     this.ecsClient = new ECSClient({
       credentials: {
@@ -222,6 +225,7 @@ export class ECSClientService {
           await bot.update({
             status: ExecutionStatusLogEnum.COMPLETED,
           });
+          await this.botService.triggerTranscriptGeneration(bot.id);
         }
       } catch (error) {
         await bot.update({
