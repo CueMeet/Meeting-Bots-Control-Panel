@@ -102,8 +102,6 @@ export class BotService {
       ...(botInstance.title && { meeting_title: botInstance.title }),
     };
 
-    console.log('initiateBot metaData:', metaData);
-
     const { audioUrl, tarUrl, tarObjectName } =
       await this.generatePresignedUrls({
         botId: botInstance.id,
@@ -246,8 +244,6 @@ export class BotService {
       'application/x-tar',
       metadata,
     );
-
-    console.log('Tar Url', tarUrl);
 
     return { audioUrl, tarUrl, audioObjectName, tarObjectName };
   }

@@ -23,7 +23,7 @@ export class CronJobService {
     await this.botService.initiateScheduledBot();
   }
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_10_MINUTES)
   async checkBotStatusAndProcess(): Promise<void> {
     try {
       console.log('Checking bot status and processing');

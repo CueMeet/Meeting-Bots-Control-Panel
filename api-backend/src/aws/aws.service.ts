@@ -36,8 +36,6 @@ export class AwsService {
         Metadata: metadata,
       };
 
-      console.log('generatePresignedUrlToUpload input:', input);
-
       const command = new PutObjectCommand(input);
 
       return getSignedUrl(this.s3, command, {
