@@ -10,6 +10,7 @@ from api.utils import _send_failure_notification
 from django.db import transaction
 import assemblyai as aai
 import tempfile
+import httpx
 import logging
 import tarfile
 import json
@@ -87,16 +88,34 @@ def _transcript_generator_worker(file_key: str):
                     filter_profanity=True,
                     disfluencies=False
                 )
-                transcript = transcriber.transcribe(audio_file, config)
+                transcript = None
+                try:
+                    logging.info("Attempting to transcribe audio with AssemblyAI...")
+                    transcript = transcriber.transcribe(audio_file, config)
+                    if transcript.status == aai.TranscriptStatus.error:
+                        logging.error(f"AssemblyAI transcription failed with status '{transcript.status}': {transcript.error}")
+                        raise Exception(f"Transcription failed post-communication: {transcript.error}")
+                    logging.info("Transcription call completed. Status: %s", transcript.status)
+                except httpx.ReadTimeout as rte:
+                    logging.error(f"ReadTimeout specifically caught during AssemblyAI transcription: {str(rte)}")
+                    raise rte
+                except httpx.RequestError as reqe:
+                    logging.error(f"An httpx RequestError occurred during AssemblyAI transcription: {str(reqe)}")
+                    raise reqe
 
-                if transcript.status == aai.TranscriptStatus.error:
-                    raise Exception(f"Transcription failed: {transcript.error}")
-                logging.info(f"Transcription completed successfully")
+                if not transcript or transcript.status == aai.TranscriptStatus.error:
+                    error_message = transcript.error if transcript and hasattr(transcript, 'error') else "Unknown transcription error or timeout previously occurred."
+                    logging.error(f"Cannot proceed with transcription data processing due to error: {error_message}")
+                    raise Exception(f"Transcription data unavailable or in error state: {error_message}")
 
                 transcription_data = []
                 transcription_logs = []
+                sentences = transcript.get_sentences()
 
-                for u in transcript.get_sentences():
+                if not sentences:
+                    logging.warning("No sentences returned from transcription.")
+                
+                for u in sentences:
                     transcription_data.append({
                         'Transcription_Start_Time': timedelta(milliseconds=u.start),
                         'Transcription_End_Time': timedelta(milliseconds=u.end),
@@ -104,12 +123,13 @@ def _transcript_generator_worker(file_key: str):
                         'Transcription_Data': u.text
                     })
 
+            if not transcription_data:
+                logging.warning("Transcription data is empty after processing sentences. Check AssemblyAI response.")
+            
             user_transcript = reconcile_speakers(transcription_data, meeting_data)
 
             file_key_modified = file_key.replace("raw_combined/", "").replace(".tar", "")
             audio_s3_key = f"raw_recordings/{file_key_modified}.opus"
-
-            prompt_text = "Here is the transcript of the meeting, Conversations are in the order they occurred: "
             for u in user_transcript:
                 transcription_logs.append(TranscriptionLog(
                     file_log=file_ref,
@@ -118,9 +138,6 @@ def _transcript_generator_worker(file_key: str):
                     transcription_end_time_milliseconds=u['Transcription_End_Time'],
                     transcription_Data=u.get('Transcription_Data', ''),
                 ))
-                speaker = u.get('Speaker', 'Unknown speaker')
-                text = u.get('Transcription_Data', '')
-                prompt_text += f"{speaker} said: {text};"
 
             TranscriptionLog.objects.filter(file_log=file_ref).delete()
             TranscriptionLog.objects.bulk_create(transcription_logs)
