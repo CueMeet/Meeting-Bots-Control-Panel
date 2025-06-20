@@ -1,7 +1,5 @@
 import {
   BadRequestException,
-  forwardRef,
-  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -12,7 +10,7 @@ import * as moment from 'moment-timezone';
 import { lastValueFrom } from 'rxjs';
 import { Op } from 'sequelize';
 import { AwsService } from 'src/aws/aws.service';
-import { ECSClientService } from 'src/aws/ecs.service';
+import { CloudService } from 'src/cloud/cloud.service';
 import { ApiKey } from 'src/database/models/api-key.model';
 import {
   Bot,
@@ -28,7 +26,6 @@ import {
   TranscriptionLogResponse,
 } from 'src/interfaces/proto-generated/transcript_management';
 import { v4 as uuidv4 } from 'uuid';
-import { TASK_STOPPED_ERROR_CODES } from 'src/constants/ecs';
 
 @Injectable()
 export class BotService {
@@ -36,8 +33,7 @@ export class BotService {
     @InjectModel(Bot)
     private botModel: typeof Bot,
     private readonly awsService: AwsService,
-    @Inject(forwardRef(() => ECSClientService))
-    private readonly ecsService: ECSClientService,
+    private readonly cloudService: CloudService,
     private readonly configService: ConfigService,
     private readonly workerService: WorkerService,
   ) {}
@@ -199,7 +195,7 @@ export class BotService {
   async leaveCall(botId: string): Promise<Bot> {
     const bot = await this.botModel.findByPk(botId);
     if (!bot) throw new NotFoundException('Bot not found');
-    await this.ecsService.stopTask(bot.taskId);
+    await this.cloudService.stopTask(bot.taskId);
     await bot.update({ status: ExecutionStatusLogEnum.STOPPED });
     await bot.reload();
 
@@ -254,10 +250,6 @@ export class BotService {
     botName,
     waitingTime = 8100,
   ) {
-    const taskDefinition = this.configService.get(
-      'aws.ecsTaskDefinitionGoogle',
-    );
-    const containerName = this.configService.get('aws.ecsContainerNameGoogle');
     const command = [
       '/bin/bash',
       '-c',
@@ -265,18 +257,7 @@ export class BotService {
       '--max-waiting-time',
       waitingTime.toString(),
     ];
-    const res = await this.ecsService.runTask(
-      taskDefinition,
-      containerName,
-      command,
-    );
-
-    if (!(res.hasOwnProperty('tasks') && res['tasks'].length > 0))
-      throw new Error('Failed to start ECS task.');
-
-    const taskArn = res['tasks'][0]['taskArn'];
-    const splittedTaskArn = taskArn.split('/');
-    const taskId = splittedTaskArn[splittedTaskArn.length - 1];
+    const taskId = await this.cloudService.runGoogleBotTask(command);
 
     return taskId;
   }
@@ -287,8 +268,6 @@ export class BotService {
     botName,
     waitingTime = 8100,
   ) {
-    const taskDefinition = this.configService.get('aws.ecsTaskDefinitionTeams');
-    const containerName = this.configService.get('aws.ecsContainerNameTeams');
     const command = [
       '/bin/bash',
       '-c',
@@ -296,18 +275,7 @@ export class BotService {
       '--max-waiting-time',
       waitingTime.toString(),
     ];
-    const res = await this.ecsService.runTask(
-      taskDefinition,
-      containerName,
-      command,
-    );
-
-    if (!(res.hasOwnProperty('tasks') && res['tasks'].length > 0))
-      throw new Error('Failed to start ECS task.');
-
-    const taskArn = res['tasks'][0]['taskArn'];
-    const splittedTaskArn = taskArn.split('/');
-    const taskId = splittedTaskArn[splittedTaskArn.length - 1];
+    const taskId = await this.cloudService.runTeemsBotTask(command);
 
     return taskId;
   }
@@ -318,8 +286,6 @@ export class BotService {
     botName,
     waitingTime = 8100,
   ) {
-    const taskDefinition = this.configService.get('aws.ecsTaskDefinitionZoom');
-    const containerName = this.configService.get('aws.ecsContainerNameZoom');
     const command = [
       '/bin/bash',
       '-c',
@@ -330,18 +296,7 @@ export class BotService {
       }" --max-waiting-time ${waitingTime.toString()}`,
     ];
 
-    const res = await this.ecsService.runTask(
-      taskDefinition,
-      containerName,
-      command,
-    );
-
-    if (!(res.hasOwnProperty('tasks') && res['tasks'].length > 0))
-      throw new Error('Failed to start ECS task.');
-
-    const taskArn = res['tasks'][0]['taskArn'];
-    const splittedTaskArn = taskArn.split('/');
-    const taskId = splittedTaskArn[splittedTaskArn.length - 1];
+    const taskId = await this.cloudService.runZoomBotTask(command);
 
     return taskId;
   }
@@ -390,38 +345,6 @@ export class BotService {
       total: transcript.count,
       hasMore: transcript.count > pagination.page_size * pagination.page,
     };
-  }
-
-  async findBotsWithNonErrorFailures(): Promise<Bot[]> {
-    const bots = await this.botModel.findAll({
-      where: {
-        status: { [Op.not]: ExecutionStatusLogEnum.FAILED },
-        taskId: { [Op.not]: null },
-        // Only get bots from the last 24 hours
-        createdAt: {
-          [Op.gte]: moment().subtract(24, 'hours').toDate(),
-        },
-      },
-      include: [{ model: ApiKey, attributes: ['userId'] }],
-    });
-
-    // Filter bots to only those that failed for non-error reasons
-    const results = [];
-    for (const bot of bots) {
-      try {
-        const taskInfo = await this.ecsService.healthCheckTask(bot.taskId);
-        if (
-          taskInfo?.lastStatus === 'STOPPED' &&
-          !TASK_STOPPED_ERROR_CODES.includes(taskInfo?.stopCode)
-        ) {
-          results.push(bot);
-        }
-      } catch (error) {
-        console.error(`Error checking task status for bot ${bot.id}:`, error);
-      }
-    }
-
-    return results;
   }
 
   async triggerTranscriptGeneration(botId: string): Promise<void> {

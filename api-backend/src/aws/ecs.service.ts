@@ -10,10 +10,8 @@ import {
   ListTasksCommandOutput,
   RunTaskCommand,
   RunTaskCommandInput,
-  RunTaskCommandOutput,
   StopTaskCommand,
   StopTaskCommandInput,
-  StopTaskCommandOutput,
   Task,
 } from '@aws-sdk/client-ecs';
 
@@ -31,6 +29,10 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Bot, ExecutionStatusLogEnum } from 'src/database/models/bot.model';
 import { InjectModel } from '@nestjs/sequelize';
 import { BotService } from 'src/bot/bot.service';
+import {
+  ICloudService,
+  IRunTaskInput,
+} from 'src/cloud/cloud-service.interface';
 interface TaskInfo {
   taskId?: string;
   lastStatus?: string;
@@ -43,7 +45,7 @@ interface TaskInfo {
 }
 
 @Injectable()
-export class ECSClientService {
+export class ECSClientService implements ICloudService {
   private readonly ecsClient: ECSClient;
   private readonly clusterName: string;
   private readonly launchType: LaunchType = 'FARGATE';
@@ -87,12 +89,12 @@ export class ECSClientService {
     }
   }
 
-  async runTask(
-    taskDefinition: string,
-    containerName: string,
-    command: string[],
+  async runTask({
+    containerName,
+    command,
+    taskDefinition,
     taskCount = 1,
-  ): Promise<RunTaskCommandOutput> {
+  }: IRunTaskInput): Promise<string> {
     try {
       const input: RunTaskCommandInput = {
         cluster: this.clusterName,
@@ -118,14 +120,21 @@ export class ECSClientService {
 
       const commandInstance = new RunTaskCommand(input);
 
-      return this.ecsClient.send(commandInstance);
+      const res = await this.ecsClient.send(commandInstance);
+
+      if (!(res.hasOwnProperty('tasks') && res['tasks'].length > 0))
+        throw new Error('Failed to start ECS task.');
+
+      const taskArn = res['tasks'][0]['taskArn'];
+
+      return this.getTaskIdByTaskArn(taskArn);
     } catch (error) {
       Logger.error(`Failed to run task: ${error}`);
       throw error;
     }
   }
 
-  async stopTask(taskId: string): Promise<StopTaskCommandOutput> {
+  async stopTask(taskId: string): Promise<void> {
     try {
       const input: StopTaskCommandInput = {
         cluster: this.clusterName,
@@ -133,7 +142,7 @@ export class ECSClientService {
       };
       const command = new StopTaskCommand(input);
 
-      return this.ecsClient.send(command);
+      await this.ecsClient.send(command);
     } catch (error) {
       Logger.error(`Failed to stop task: ${error}`);
       throw error;
@@ -242,7 +251,11 @@ export class ECSClientService {
     const containerName = taskInfo?.containerOverrides?.[0]?.name;
     const command = taskInfo.containerOverrides?.[0]?.command;
 
-    const res = await this.runTask(taskDefinition, containerName, command);
+    const res = await this.runTask({
+      taskDefinition,
+      containerName,
+      command,
+    });
 
     if (!(res.hasOwnProperty('tasks') && res['tasks'].length > 0))
       throw new Error('Failed to start ECS task.');
