@@ -14,6 +14,22 @@ export default () => ({
   grpc: {
     workerBackendUrl: process.env.WORKER_BACKEND_GRPC_URL,
   },
+  cloud: {
+    provider: process.env.CLOUD_PROVIDER,
+  },
+  ovh: {
+    imageGoogle: process.env.OVH_IMAGE_GOOGLE,
+    imageTeams: process.env.OVH_IMAGE_TEAMS,
+    imageZoom: process.env.OVH_IMAGE_ZOOM,
+    imagePullSecret: process.env.OVH_IMAGE_PULL_SECRET,
+    kubeConfigPath: process.env.OVH_KUBECONFIG_PATH,
+    clusterNamespace: process.env.OVH_CLUSTER_NAMESPACE,
+    botEnv: {
+      ENVIRONMENT_NAME: process.env.OVH_ENVIRONMENT_NAME,
+      DEBUG: process.env.OVH_DEBUG,
+      HIGHLIGHT_PROJECT_ID: process.env.OVH_HIGHLIGHT_PROJECT_ID,
+    },
+  },
   aws: {
     accessKey: process.env.AWS_ACCESS_KEY,
     secretKey: process.env.AWS_SECRET_KEY,

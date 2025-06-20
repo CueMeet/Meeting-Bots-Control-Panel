@@ -13,6 +13,8 @@ import { AwsModule } from './aws/aws.module';
 import { BullModule } from '@nestjs/bullmq';
 import { CronJobModule } from './cron-job/cron-job.module';
 import { GrpcModule } from './grpc/grpc.module';
+import { OvhModule } from './ovh/ovh.module';
+import { CloudModule } from './cloud/cloud.module';
 
 @Module({
   imports: [
@@ -38,6 +40,8 @@ import { GrpcModule } from './grpc/grpc.module';
     AwsModule,
     CronJobModule,
     GrpcModule,
+    OvhModule,
+    CloudModule,
   ],
   controllers: [AppController],
   providers: [

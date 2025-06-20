@@ -1,5 +1,5 @@
 # Use the official Node.js 20 image as a base image
-FROM public.ecr.aws/docker/library/node:20.11.0
+FROM public.ecr.aws/docker/library/node:22.15.1
 
 # Set the working directory
 WORKDIR /app
