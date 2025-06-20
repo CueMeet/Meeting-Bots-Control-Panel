@@ -17,7 +17,7 @@ import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { InjectQueue } from '@nestjs/bullmq';
 import { v4 as uuidv4 } from 'uuid';
-import { IJobInfo } from 'src/interfaces/ovh/job-Infor';
+import { IJobInfo } from 'src/interfaces/ovh/job-Info';
 import { BotService } from 'src/bot/bot.service';
 
 @Injectable()
