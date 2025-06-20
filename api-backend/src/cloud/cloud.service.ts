@@ -21,6 +21,7 @@ export class CloudService {
     private readonly ecsService: ECSClientService,
     private readonly configService: ConfigService,
   ) {
+    this.cloudProvider = this.configService.get('cloud.provider');
     this.cloudService =
       this.configService.get('cloud.provider') === CloudProvider.OVH
         ? this.ovhService
