@@ -6,8 +6,8 @@ import {
 import * as k8s from '@kubernetes/client-node';
 import { Op } from 'sequelize';
 import {
-  ECS_TASK_INITIATE_FAILED_TASK,
-  ECS_TASK_QUEUE,
+  OVH_TASK_INITIATE_FAILED_TASK,
+  OVH_TASK_QUEUE,
 } from 'src/constants/bull-queue';
 import * as moment from 'moment';
 
@@ -30,8 +30,8 @@ export class OvhService implements ICloudService {
   constructor(
     @InjectModel(Bot)
     private readonly botModel: typeof Bot,
-    @InjectQueue(ECS_TASK_QUEUE)
-    private readonly ecsTaskQueue: Queue,
+    @InjectQueue(OVH_TASK_QUEUE)
+    private readonly ovhTaskQueue: Queue,
     private readonly configService: ConfigService,
     @Inject(forwardRef(() => BotService))
     private readonly botService: BotService,
@@ -230,8 +230,8 @@ export class OvhService implements ICloudService {
             status: ExecutionStatusLogEnum.FAILED,
           });
           if (this.configService.get('nodeEnv') === 'production') {
-            await this.ecsTaskQueue.add(
-              ECS_TASK_INITIATE_FAILED_TASK,
+            await this.ovhTaskQueue.add(
+              OVH_TASK_INITIATE_FAILED_TASK,
               { botId: bot.id },
               {
                 removeOnComplete: true,
@@ -263,7 +263,7 @@ export class OvhService implements ICloudService {
     const container = originalJob.spec.template.spec.containers[0];
 
     const newJobName = await this.runTask({
-      containerName: container.image || '',
+      image: container.image || '',
       command: container.command || [],
     });
 
