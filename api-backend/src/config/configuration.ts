@@ -17,17 +17,23 @@ export default () => ({
   aws: {
     accessKey: process.env.AWS_ACCESS_KEY,
     secretKey: process.env.AWS_SECRET_KEY,
-    bucketRegion: process.env.AWS_BUCKET_REGION,
+    region: process.env.AWS_REGION,
     ecsClusterName: process.env.AWS_ECS_CLUSTER_NAME,
     securityGroup: process.env.AWS_SECURITY_GROUP,
     vpsSubnet: process.env.AWS_VPS_SUBNET,
-    meetingBotBucketName: process.env.AWS_MEETING_BOT_BUCKET_NAME,
     ecsTaskDefinitionGoogle: process.env.ECS_TASK_DEFINITION_GOOGLE,
     ecsContainerNameGoogle: process.env.ECS_CONTAINER_NAME_GOOGLE,
     ecsTaskDefinitionTeams: process.env.ECS_TASK_DEFINITION_TEAMS,
     ecsContainerNameTeams: process.env.ECS_CONTAINER_NAME_TEAMS,
     ecsTaskDefinitionZoom: process.env.ECS_TASK_DEFINITION_ZOOM,
     ecsContainerNameZoom: process.env.ECS_CONTAINER_NAME_ZOOM,
+  },
+  s3: {
+    endpoint: process.env.S3_ENDPOINT_URL,
+    bucketName: process.env.S3_BUCKET_NAME,
+    accessKey: process.env.S3_ACCESS_KEY,
+    secretKey: process.env.S3_SECRET_KEY,
+    region: process.env.S3_REGION,
   },
   bot: {
     meetingBotRetryCount:
