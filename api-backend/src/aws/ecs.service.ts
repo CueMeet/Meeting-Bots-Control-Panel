@@ -62,7 +62,7 @@ export class ECSClientService {
         accessKeyId: this.configService.get('aws.accessKey'),
         secretAccessKey: this.configService.get('aws.secretKey'),
       },
-      region: this.configService.get('aws.bucketRegion'),
+      region: this.configService.get('aws.region'),
     });
     this.clusterName = this.configService.get('aws.ecsClusterName');
   }

@@ -12,11 +12,14 @@ export class AwsService {
 
   constructor(readonly configService: ConfigService) {
     this.s3 = new S3({
+      ...(this.configService.get('s3.endpoint') && {
+        endpoint: this.configService.get('s3.endpoint'),
+      }),
       credentials: {
-        accessKeyId: this.configService.get('aws.accessKey'),
-        secretAccessKey: this.configService.get('aws.secretKey'),
+        accessKeyId: this.configService.get('s3.accessKey'),
+        secretAccessKey: this.configService.get('s3.secretKey'),
       },
-      region: this.configService.get('aws.bucketRegion'),
+      region: this.configService.get('s3.region'),
     });
   }
 
@@ -30,7 +33,7 @@ export class AwsService {
 
     try {
       const input: PutObjectCommandInput = {
-        Bucket: this.configService.get('aws.meetingBotBucketName'),
+        Bucket: this.configService.get('s3.bucketName'),
         Key: objectName,
         ContentType: contentType,
         Metadata: metadata,
