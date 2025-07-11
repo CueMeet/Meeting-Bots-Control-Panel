@@ -16,7 +16,39 @@ yarn install
 
 ## Environment Variables
 
-Create a `.env` file in the root directory
+Create a `.env` file in the root directory with the following variables:
+
+### Required Variables
+- `DB_HOST` - Database host
+- `DB_PORT` - Database port
+- `DB_USERNAME` - Database username
+- `DB_PASSWORD` - Database password
+- `DB_DATABASE` - Database name
+- `REDIS_HOST` - Redis host
+- `REDIS_PORT` - Redis port
+
+### LavaPayments Configuration
+- `LAVAPAYMENTS_SECRET_KEY` - Your LavaPayments API secret key
+- `LAVAPAYMENTS_BASE_URL` - LavaPayments API base URL (default: https://api.lavapayments.com/v1)
+- `LAVAPAYMENTS_WEBHOOK_SECRET` - Webhook secret for signature verification
+- `LAVA_PRODUCT_SECRET` - Product secret for usage tracking and forward tokens
+
+### ZITADEL OAuth Configuration
+- `ZITADEL_ISSUER` - ZITADEL issuer URL
+- `ZITADEL_CLIENT_ID` - ZITADEL client ID
+- `ZITADEL_CLIENT_SECRET` - ZITADEL client secret
+- `ZITADEL_REDIRECT_URI` - OAuth redirect URI
+
+### Customer Portal Configuration
+- `CUSTOMER_JWT_SECRET` - JWT secret for customer authentication
+- `CUSTOMER_PORTAL_FRONTEND_URL` - Frontend URL for customer portal
+
+### AWS Configuration
+- `AWS_ACCESS_KEY` - AWS access key
+- `AWS_SECRET_KEY` - AWS secret key
+- `AWS_BUCKET_REGION` - AWS bucket region
+- `AWS_ECS_CLUSTER_NAME` - ECS cluster name
+- `AWS_MEETING_BOT_BUCKET_NAME` - S3 bucket for meeting bot files
 
 ## Running the Application
 

@@ -1,0 +1,2552 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Lava API",
+    "description": "Lava API enables businesses to implement usage-based billing for AI services. This API allows tracking, managing, and billing for third-party AI API usage through a forwarding system.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Lava support",
+      "url": "https://www.lavapayments.com/contact"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.lavapayments.com/v1/",
+      "description": "Lava API v1"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "Auth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Bearer token authentication used for standard API calls. Format: 'Bearer YOUR_API_KEY'"
+      },
+      "ForwardAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Special authentication used for the forward endpoint. Requires a base64-encoded JSON object containing secret_key, connection_secret, and product_secret. Optionally include provider_key to use your own API key for the request. When using your own API key, you can make requests that use metering only by setting both connection_secret and product_secret to null. Format: 'Bearer BASE64_ENCODED_JSON'"
+      },
+      "ForwardAuthAnthropic": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "You can pass an x-api-key header to authenticate with the forward endpoint for compatibility with anthropic style clients. Requires a base64-encoded JSON object containing secret_key, connection_secret, and product_secret. Optionally include provider_key to use your own API key for the request. When using your own API key, you can make requests that use metering only by setting both connection_secret and product_secret to null."
+      },
+      "ForwardAuthGoogle": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-goog-api-key",
+        "description": "You can pass an x-goog-api-key header to authenticate with the forward endpoint for compatibility with Google style clients. Requires a base64-encoded JSON object containing secret_key, connection_secret, and product_secret. Optionally include provider_key to use your own API key for the request. When using your own API key, you can make requests that use metering only by setting both connection_secret and product_secret to null."
+      },
+      "ForwardAuthGoogleQueryParam": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "key",
+        "description": "You can pass a key query parameter to authenticate with the forward endpoint for compatibility with Google style clients. Requires a base64-encoded JSON object containing secret_key, connection_secret, and product_secret. Optionally include provider_key to use your own API key for the request. When using your own API key, you can make requests that use metering only by setting both connection_secret and product_secret to null."
+      },
+      "ForwardAuthElevenLabs": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "xi-api-key",
+        "description": "You can pass an xi-api-key header to authenticate with the forward endpoint for compatibility with ElevenLabs style clients. Requires a base64-encoded JSON object containing secret_key, connection_secret, and product_secret. Optionally include provider_key to use your own API key for the request. When using your own API key, you can make requests that use metering only by setting both connection_secret and product_secret to null."
+      }
+    },
+    "schemas": {
+      "Request": {
+        "type": "object",
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "example": "req_01JZM06X45J1W1YHR246GSE1ZN",
+            "description": "Unique identifier for the AI API request"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "completed",
+              "error"
+            ],
+            "example": "pending",
+            "description": "Status of the request: 'pending' (request was created but not yet completed), 'completed' (request was completed and metered successfully), 'error' (request failed to be metered)"
+          },
+          "connection_id": {
+            "type": "string",
+            "example": "con_01JZM06X4553RJZ1CAH4C6VVP4",
+            "description": "Identifier for the connection that made this request"
+          },
+          "product_id": {
+            "type": "string",
+            "example": "prd_01JZM06X45QR7EB2RDFQE310NF",
+            "description": "Identifier for the product configuration used for this request"
+          },
+          "provider": {
+            "type": "string",
+            "example": "openai",
+            "description": "Provider used for the request (e.g., openai, anthropic, deepseek, mistral, xai, google)"
+          },
+          "model": {
+            "type": "string",
+            "example": "gpt-4",
+            "description": "AI model used for the request (e.g., gpt-4, claude-3-opus)"
+          },
+          "endpoint": {
+            "type": "string",
+            "example": "POST https://api.openai.com/v1/chat/completions",
+            "description": "Full endpoint path used for the forwarded request"
+          },
+          "provider_key_type": {
+            "type": "string",
+            "enum": [
+              "managed",
+              "unmanaged"
+            ],
+            "example": "managed",
+            "description": "Indicates whether the provider key used for this request was managed by Lava ('managed') or provided by the customer ('unmanaged')"
+          },
+          "response_id": {
+            "type": "string",
+            "example": "chatcmpl-abc123def456ghi789",
+            "description": "Original response ID returned from the AI provider"
+          },
+          "model_usage": {
+            "type": "object",
+            "properties": {
+              "input_tokens": {
+                "type": "integer",
+                "example": 845,
+                "description": "Number of input/prompt tokens used in the request"
+              },
+              "output_tokens": {
+                "type": "integer",
+                "example": 412,
+                "description": "Number of output/completion tokens generated in the response"
+              },
+              "total_tokens": {
+                "type": "integer",
+                "example": 1257,
+                "description": "Total tokens (input + output) for this request"
+              },
+              "input_characters": {
+                "type": "integer",
+                "example": 0,
+                "description": "Total characters (input) for this request"
+              },
+              "output_characters": {
+                "type": "integer",
+                "example": 0,
+                "description": "Total characters (output) for this request"
+              },
+              "total_characters": {
+                "type": "integer",
+                "example": 0,
+                "description": "Total characters (input + output) for this request"
+              },
+              "input_seconds": {
+                "type": "integer",
+                "example": 0,
+                "description": "Total seconds (input) for this request"
+              },
+              "output_seconds": {
+                "type": "integer",
+                "example": 0,
+                "description": "Total seconds (output) for this request"
+              },
+              "total_seconds": {
+                "type": "integer",
+                "example": 0,
+                "description": "Total seconds (input + output) for this request"
+              },
+              "input_cost": {
+                "type": "string",
+                "example": "0.0169000000",
+                "description": "Cost of input tokens in USD (high precision decimal as string)"
+              },
+              "output_cost": {
+                "type": "string",
+                "example": "0.0412000000",
+                "description": "Cost of output tokens in USD (high precision decimal as string)"
+              },
+              "total_cost": {
+                "type": "string",
+                "example": "0.0581000000",
+                "description": "Total cost of the request in USD (high precision decimal as string)"
+              },
+              "payer": {
+                "type": "string",
+                "enum": [
+                  "wallet",
+                  "merchant"
+                ],
+                "example": "wallet",
+                "description": "Payer of the request cost: 'wallet' (will be deducted from the connection's wallet credits) or 'merchant' (will be charged to the merchant)"
+              }
+            },
+            "required": [
+              "input_tokens",
+              "output_tokens",
+              "total_tokens",
+              "input_characters",
+              "output_characters",
+              "total_characters",
+              "input_seconds",
+              "output_seconds",
+              "total_seconds",
+              "input_cost",
+              "output_cost",
+              "total_cost",
+              "payer"
+            ]
+          },
+          "fee": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string",
+                "example": "0.0058100000",
+                "description": "Fee amount in USD (high precision decimal as string)"
+              },
+              "rate_type": {
+                "type": "string",
+                "enum": [
+                  "fixed",
+                  "percentage"
+                ],
+                "example": "percentage",
+                "description": "Fee model: 'fixed' (fixed added cost) or 'percentage' (percentage of base cost)"
+              },
+              "token_basis": {
+                "type": "string",
+                "enum": [
+                  "input+output",
+                  "output"
+                ],
+                "example": "input+output",
+                "description": "Usage calculation: 'input+output' (full request) or 'output' (only request output)"
+              },
+              "breakdown": {
+                "type": "array",
+                "description": "Breakdown of the fee calculation for this request to help with understanding how the fee was calculated across tiers",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "tier": {
+                      "type": "object",
+                      "properties": {
+                        "start": {
+                          "type": "integer",
+                          "example": 0,
+                          "description": "Start of the usage tier in the unit type specified in the tier type"
+                        },
+                        "rate": {
+                          "type": "string",
+                          "example": "0.0000000000",
+                          "description": "Rate per unit in the unit type specified in the tier type in USD (high precision decimal as string) OR percentage (e.g. '10' for 10%)"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "tokens_1m",
+                            "characters_1m",
+                            "minutes",
+                            "requests"
+                          ],
+                          "example": "tokens_1m",
+                          "description": "Unit type of the usage tier: 'tokens_1m' (tokens per 1M), 'characters_1m' (characters per 1M), 'minutes' (minutes), or 'requests' (requests)"
+                        }
+                      },
+                      "required": [
+                        "start",
+                        "rate",
+                        "type"
+                      ]
+                    },
+                    "tokens": {
+                      "type": "integer",
+                      "example": 1000000,
+                      "description": "Number of tokens used in this tier"
+                    },
+                    "characters": {
+                      "type": "integer",
+                      "example": 0,
+                      "description": "Number of characters used in this tier"
+                    },
+                    "seconds": {
+                      "type": "integer",
+                      "example": 0,
+                      "description": "Number of seconds used in this tier"
+                    },
+                    "cost": {
+                      "type": "string",
+                      "example": "0.0000000000",
+                      "description": "Cost of the request for this tier in USD (high precision decimal as string)"
+                    }
+                  },
+                  "required": [
+                    "tier",
+                    "tokens",
+                    "characters",
+                    "seconds",
+                    "cost"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "amount",
+              "rate_type",
+              "token_basis",
+              "breakdown"
+            ]
+          },
+          "service_charge": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string",
+                "example": "0.0058100000",
+                "description": "Service charge amount in USD (high precision decimal as string)"
+              },
+              "payer": {
+                "type": "string",
+                "enum": [
+                  "wallet",
+                  "merchant"
+                ],
+                "example": "wallet",
+                "description": "Payer of the service charge: 'wallet' (will be deducted from the connection's wallet credits) or 'merchant' (will be charged to the merchant)"
+              }
+            },
+            "required": [
+              "amount",
+              "payer"
+            ]
+          },
+          "total_request_cost": {
+            "type": "string",
+            "example": "0.0639100000",
+            "description": "Total cost of the request including fees and service charges (high precision decimal as string)"
+          },
+          "total_wallet_cost": {
+            "type": "string",
+            "example": "0.0639100000",
+            "description": "Total cost of the request charged to the wallet (high precision decimal as string)"
+          },
+          "total_merchant_cost": {
+            "type": "string",
+            "example": "0.0000000000",
+            "description": "Total cost of the request charged to the you, the merchant (high precision decimal as string)"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Metadata associated with the request, key-value pairs that can be used to help track the request in your system. Keys must contain only ASCII letters, numbers, and underscores (no spaces or special characters).",
+            "properties": {
+              "key": {
+                "type": "string",
+                "description": "Key of the metadata (must contain only ASCII letters, numbers, and underscores)",
+                "example": "user_id"
+              },
+              "value": {
+                "type": "string",
+                "description": "Value of the metadata",
+                "example": "123456"
+              }
+            },
+            "required": [
+              "key",
+              "value"
+            ]
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-05-15T14:22:31Z",
+            "description": "ISO 8601 request completion timestamp returned by the provider"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-05-15T14:22:31Z",
+            "description": "ISO 8601 timestamp when the request was created and initially recorded by Lava"
+          }
+        },
+        "required": [
+          "request_id",
+          "status",
+          "provider",
+          "endpoint",
+          "provider_key_type",
+          "model_usage",
+          "fee",
+          "service_charge",
+          "total_request_cost",
+          "total_wallet_cost",
+          "total_merchant_cost",
+          "metadata",
+          "created_at"
+        ]
+      },
+      "Usage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "format": "date",
+                  "example": "2023-05-15",
+                  "description": "Date of the usage in YYYY-MM-DD format"
+                },
+                "total_requests": {
+                  "type": "integer",
+                  "example": 100,
+                  "description": "Total number of requests on this date"
+                },
+                "total_usage_tokens": {
+                  "type": "integer",
+                  "example": 45823,
+                  "description": "Total number of tokens consumed on this date"
+                },
+                "total_usage_cost": {
+                  "type": "string",
+                  "example": "2.5741000000",
+                  "description": "Total cost of usage in USD on this date (high precision decimal as string)"
+                },
+                "total_fee_amount": {
+                  "type": "string",
+                  "example": "0.2574100000",
+                  "description": "Total fee amount in USD on this date (high precision decimal as string)"
+                },
+                "total_service_charge_amount": {
+                  "type": "string",
+                  "example": "0.2574100000",
+                  "description": "Total service charge amount in USD on this date (high precision decimal as string)"
+                },
+                "total_request_cost": {
+                  "type": "string",
+                  "example": "2.8315100000",
+                  "description": "Total cost of the requests on this date including usage, fees, and service charges (high precision decimal as string)"
+                },
+                "total_wallet_cost": {
+                  "type": "string",
+                  "example": "2.8315100000",
+                  "description": "Total cost on this date charged to the wallet (high precision decimal as string)"
+                },
+                "total_merchant_cost": {
+                  "type": "string",
+                  "example": "0.0000000000",
+                  "description": "Total cost on this date charged to you, the merchant (high precision decimal as string)"
+                }
+              },
+              "required": [
+                "date",
+                "total_requests",
+                "total_usage_tokens",
+                "total_usage_cost",
+                "total_fee_amount",
+                "total_service_charge_amount",
+                "total_request_cost",
+                "total_wallet_cost",
+                "total_merchant_cost"
+              ]
+            }
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "total_requests": {
+                "type": "integer",
+                "example": 1000,
+                "description": "Total number of requests across all dates"
+              },
+              "total_usage_tokens": {
+                "type": "integer",
+                "example": 458230,
+                "description": "Total number of tokens consumed across all dates"
+              },
+              "total_usage_cost": {
+                "type": "string",
+                "example": "25.7410000000",
+                "description": "Total cost of usage in USD across all dates (high precision decimal as string)"
+              },
+              "total_fee_amount": {
+                "type": "string",
+                "example": "2.5741000000",
+                "description": "Total fee amount in USD across all dates (high precision decimal as string)"
+              },
+              "total_service_charge_amount": {
+                "type": "string",
+                "example": "2.5741000000",
+                "description": "Total service charge amount in USD across all dates (high precision decimal as string)"
+              },
+              "total_request_cost": {
+                "type": "string",
+                "example": "28.3151000000",
+                "description": "Total cost of all requests including usage, fees, and service charges (high precision decimal as string)"
+              },
+              "total_wallet_cost": {
+                "type": "string",
+                "example": "28.3151000000",
+                "description": "Total cost charged to the wallet (high precision decimal as string)"
+              },
+              "total_merchant_cost": {
+                "type": "string",
+                "example": "0.0000000000",
+                "description": "Total cost charged to you, the merchant (high precision decimal as string)"
+              }
+            },
+            "required": [
+              "total_requests",
+              "total_usage_tokens",
+              "total_usage_cost",
+              "total_fee_amount",
+              "total_service_charge_amount",
+              "total_request_cost",
+              "total_wallet_cost",
+              "total_merchant_cost"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "totals"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string",
+                "description": "Human-readable error message describing what went wrong",
+                "example": "Invalid authentication credentials"
+              },
+              "code": {
+                "type": "string",
+                "description": "Machine-readable error code describing what went wrong",
+                "example": "forward_token_json_invalid"
+              },
+              "status": {
+                "type": "integer",
+                "description": "HTTP status code of the error",
+                "example": 400
+              },
+              "issues": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Path to the field that caused the validation error"
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "Error message describing the validation issue"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "message"
+                  ]
+                },
+                "description": "Optional array of specific validation issues with their paths and messages",
+                "example": [
+                  {
+                    "path": [
+                      "model"
+                    ],
+                    "message": "Missing required field: model"
+                  },
+                  {
+                    "path": [
+                      "messages",
+                      "0",
+                      "content"
+                    ],
+                    "message": "Invalid message content format"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "message",
+              "code",
+              "status"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "CheckoutSession": {
+        "type": "object",
+        "properties": {
+          "checkout_session_id": {
+            "type": "string",
+            "example": "cs_01JZM06X45G8E1FPBFTJKQ58R3",
+            "description": "Unique identifier for the checkout session"
+          },
+          "checkout_session_token": {
+            "type": "string",
+            "example": "eyJzZWNyZXQiOiJjc3NfbGl2ZV9seUduOUxKSG82SVY3QlJtSWIwaDNRYUJtRkd0a19HaURsaGpkbmhoZzNFSTVmVkJaeWZweUpCIiwiYmFzZSI6Imh0dHBzOi8vd3d3LmxhdmFwYXltZW50cy5jb20vIn0=",
+            "description": "Secure token used for authentication in the checkout process"
+          },
+          "checkout_mode": {
+            "type": "string",
+            "example": "onboarding",
+            "enum": [
+              "onboarding",
+              "topup"
+            ],
+            "description": "Checkout mode: 'onboarding' creates a new wallet connection, 'topup' adds funds to an existing connection"
+          },
+          "origin_url": {
+            "type": "string",
+            "example": "https://your-app.example.com/",
+            "description": "Origin url where the checkout will be opened"
+          },
+          "connection_id": {
+            "type": "string",
+            "example": "con_01JZM06X45KCPMCSD4DZFWJKPB",
+            "description": "Identifier for the connection (only available after checkout completion)"
+          },
+          "reference_id": {
+            "type": "string",
+            "example": "customer_123456",
+            "description": "Your custom identifier for tracking this connection in your system"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-05-15T08:30:00Z",
+            "description": "ISO 8601 timestamp when the checkout session was created"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-05-15T08:35:42Z",
+            "description": "If completed, ISO 8601 timestamp when the checkout was completed"
+          }
+        },
+        "required": [
+          "checkout_session_id",
+          "checkout_session_token",
+          "checkout_mode",
+          "origin_url",
+          "created_at"
+        ]
+      },
+      "CreateCheckoutSession": {
+        "type": "object",
+        "properties": {
+          "checkout_mode": {
+            "type": "string",
+            "enum": [
+              "onboarding",
+              "topup"
+            ],
+            "example": "onboarding",
+            "description": "Checkout mode: 'onboarding' creates a new wallet connection, 'topup' adds funds to an existing connection"
+          },
+          "origin_url": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://your-app.example.com/",
+            "description": "Origin url where the checkout will be opened"
+          },
+          "reference_id": {
+            "type": "string",
+            "example": "customer_123456",
+            "description": "Optional custom identifier to associate with this connection for easier lookup in your system"
+          },
+          "connection_id": {
+            "type": "string",
+            "example": "con_01JZM06X457Q8GJ17P7R3AWB4S",
+            "description": "Required when checkout_mode is 'topup' - identifies the existing connection to add funds to"
+          }
+        },
+        "required": [
+          "origin_url",
+          "checkout_mode"
+        ]
+      },
+      "Connection": {
+        "type": "object",
+        "properties": {
+          "connection_id": {
+            "type": "string",
+            "example": "con_01JZM06X45XSSRY7H6N8RP6V3N",
+            "description": "Unique identifier for the connection between a merchant and a wallet"
+          },
+          "connection_secret": {
+            "type": "string",
+            "example": "cons_live_tUX3Zzll6KllXFe8godrnhrc64aINtjmXEqepyN4VMqaa8CyRRMC65",
+            "description": "Secret key for the connection that can be used to make requests to the forward endpoint"
+          },
+          "reference_id": {
+            "type": "string",
+            "example": "customer_123456",
+            "description": "Your custom identifier for this connection in your system"
+          },
+          "wallet": {
+            "type": "object",
+            "properties": {
+              "balance": {
+                "type": "string",
+                "example": "125.5000000000",
+                "description": "Credit balance in the user's wallet in USD (high precision decimal as string)"
+              },
+              "phone": {
+                "type": "string",
+                "example": "+14155552671",
+                "description": "User's phone number in E.164 format"
+              },
+              "email": {
+                "type": "string",
+                "example": "user@example.com",
+                "description": "User's email address"
+              },
+              "first_name": {
+                "type": "string",
+                "example": "Jane",
+                "description": "User's first name"
+              },
+              "last_name": {
+                "type": "string",
+                "example": "Smith",
+                "description": "User's last name"
+              }
+            },
+            "required": [
+              "balance",
+              "phone",
+              "email",
+              "first_name",
+              "last_name"
+            ]
+          },
+          "next_usage_reset": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-05-15T08:35:42Z",
+            "description": "ISO 8601 timestamp when the next usage reset will occur"
+          },
+          "previous_usage_reset": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-05-15T08:35:42Z",
+            "description": "ISO 8601 timestamp when the previous usage reset occurred"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-05-15T08:35:42Z",
+            "description": "ISO 8601 timestamp when the connection was created"
+          }
+        },
+        "required": [
+          "connection_id",
+          "wallet",
+          "created_at"
+        ]
+      }
+    }
+  },
+  "paths": {
+    "/forward": {
+      "post": {
+        "summary": "Forward POST request",
+        "description": "Forward a POST request to a third-party API (like OpenAI, Anthropic, etc.) with usage tracking and billing. This is the core functionality of Lava that allows forwarding requests to AI services.",
+        "security": [
+          {
+            "ForwardAuth": []
+          },
+          {
+            "ForwardAuthAnthropic": []
+          },
+          {
+            "ForwardAuthGoogle": []
+          },
+          {
+            "ForwardAuthGoogleQueryParam": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "u",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "https://api.openai.com/v1/chat/completions",
+            "description": "The API endpoint URL to forward the request to"
+          },
+          {
+            "name": "metadata",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional metadata to associate with the request. Must be a JSON object with up to 100 key-value pairs, where both keys and values are strings between 1-255 characters. Keys must contain only ASCII letters, numbers, and underscores (no spaces or special characters). Alternative to x-lava-metadata header.",
+            "example": "{\"user_id\": \"123456\", \"session_id\": \"abc123\"}"
+          },
+          {
+            "name": "x-lava-metadata",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional metadata to associate with the request. Must be a JSON object with up to 100 key-value pairs, where both keys and values are strings between 1-255 characters. Keys must contain only ASCII letters, numbers, and underscores (no spaces or special characters). Alternative to metadata query parameter.",
+            "example": "{\"user_id\": \"123456\", \"session_id\": \"abc123\"}"
+          }
+        ],
+        "requestBody": {
+          "description": "Request body that will be forwarded to the AI provider API. Must include the 'model' field.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "model"
+                ],
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "description": "The model to use for the request"
+                  },
+                  "stream": {
+                    "type": "boolean",
+                    "description": "Whether to stream the response"
+                  }
+                },
+                "additionalProperties": true
+              },
+              "examples": {
+                "chat-completion-request": {
+                  "summary": "OpenAI chat completions example",
+                  "value": {
+                    "model": "gpt-4",
+                    "messages": [
+                      {
+                        "role": "system",
+                        "content": "You are a helpful customer service assistant for a tech company."
+                      },
+                      {
+                        "role": "user",
+                        "content": "My laptop won't turn on. What should I check first?"
+                      }
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 300
+                  }
+                },
+                "anthropic-message-request": {
+                  "summary": "Anthropic Claude messages example",
+                  "value": {
+                    "model": "claude-3-opus-20240229",
+                    "messages": [
+                      {
+                        "role": "user",
+                        "content": "Explain quantum computing to a high school student"
+                      }
+                    ],
+                    "max_tokens": 1024,
+                    "temperature": 0.7,
+                    "system": "You are Claude, an educational AI assistant. Give clear, accurate explanations appropriate for a high school student."
+                  }
+                },
+                "google-request": {
+                  "summary": "Google Gemini API example",
+                  "value": {
+                    "contents": [
+                      {
+                        "parts": [
+                          {
+                            "text": "Explain how AI works in a few words"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response from the provider API",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Response from the provider API",
+                  "additionalProperties": true
+                },
+                "examples": {
+                  "chat-completion-response": {
+                    "summary": "Example /v1/chat/completions response",
+                    "value": {
+                      "id": "chatcmpl-abc123",
+                      "object": "chat.completion",
+                      "created": 1677858242,
+                      "model": "gpt-3.5-turbo-0613",
+                      "usage": {
+                        "prompt_tokens": 13,
+                        "completion_tokens": 7,
+                        "total_tokens": 20
+                      },
+                      "choices": [
+                        {
+                          "message": {
+                            "role": "assistant",
+                            "content": "I'm doing well, thank you for asking! How can I assist you today?"
+                          },
+                          "finish_reason": "stop",
+                          "index": 0
+                        }
+                      ]
+                    }
+                  },
+                  "anthropic-message-response": {
+                    "summary": "Example /v1/messages response",
+                    "value": {
+                      "id": "msg_012345abcdef",
+                      "type": "message",
+                      "role": "assistant",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "I'm doing well, thank you for asking! I'm Claude, an AI assistant made by Anthropic. How can I help you today?"
+                        }
+                      ],
+                      "model": "claude-3-opus-20240229",
+                      "stop_reason": "end_turn",
+                      "stop_sequence": null,
+                      "usage": {
+                        "input_tokens": 25,
+                        "output_tokens": 32
+                      }
+                    }
+                  },
+                  "google-response": {
+                    "summary": "Example Google Gemini API response",
+                    "value": {
+                      "candidates": [
+                        {
+                          "content": {
+                            "parts": [
+                              {
+                                "text": "I'm doing well, thank you for asking! How can I assist you today?"
+                              }
+                            ],
+                            "role": "model"
+                          },
+                          "finishReason": "STOP",
+                          "avgLogprobs": -0.5139622211456298
+                        }
+                      ],
+                      "usageMetadata": {
+                        "promptTokenCount": 6,
+                        "candidatesTokenCount": 80,
+                        "totalTokenCount": 86,
+                        "promptTokensDetails": [
+                          {
+                            "modality": "TEXT",
+                            "tokenCount": 6
+                          }
+                        ],
+                        "candidatesTokensDetails": [
+                          {
+                            "modality": "TEXT",
+                            "tokenCount": 80
+                          }
+                        ]
+                      },
+                      "modelVersion": "gemini-2.0-flash"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "URL parameter is missing. Please include the target URL using the ?u=<url> query parameter.",
+                        "code": "forward_url_missing",
+                        "status": 400
+                      }
+                    },
+                    "description": "URL parameter is missing"
+                  },
+                  {
+                    "value": {
+                      "error": {
+                        "message": "This endpoint is not supported. Please refer to our documentation for a list of available endpoints.",
+                        "code": "forward_endpoint_not_supported",
+                        "status": 400
+                      }
+                    },
+                    "description": "Endpoint not supported"
+                  },
+                  {
+                    "value": {
+                      "error": {
+                        "message": "The specified model is invalid. Please check your request body and refer to our documentation for supported models.",
+                        "code": "forward_model_invalid",
+                        "status": 400
+                      }
+                    },
+                    "description": "Invalid model specified"
+                  },
+                  {
+                    "value": {
+                      "error": {
+                        "message": "The specified model is not supported. Please refer to our documentation for a list of supported models.",
+                        "code": "forward_model_not_supported",
+                        "status": 400
+                      }
+                    },
+                    "description": "Model not supported"
+                  },
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Request body contains invalid JSON. Please check your request body syntax and ensure it's properly formatted.",
+                        "code": "forward_body_json_invalid",
+                        "status": 400
+                      }
+                    },
+                    "description": "Invalid JSON in request body"
+                  },
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Metadata header contains invalid JSON. Please check your metadata format.",
+                        "code": "forward_metadata_json_invalid",
+                        "status": 400
+                      }
+                    },
+                    "description": "Invalid JSON in metadata header"
+                  },
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Metadata header does not match the required schema. Please check your metadata structure.",
+                        "code": "forward_metadata_schema_invalid",
+                        "status": 400
+                      }
+                    },
+                    "description": "Invalid metadata schema"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Forward token is missing. Please provide your token using one of these methods: 'Authorization: Bearer <key>' header, 'x-api-key: <key>' header, 'key' query parameter, or 'x-goog-api-key: <key>' header.",
+                        "code": "forward_token_missing",
+                        "status": 401
+                      }
+                    },
+                    "description": "Forward token missing"
+                  }
+                ]
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Your connection has reached its usage limit. Please top up your credit balance to continue using this service.",
+                        "code": "forward_token_connection_limit_reached",
+                        "status": 402
+                      }
+                    },
+                    "description": "Connection usage limit reached"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Failed to forward your request to the target service. This may be due to network issues or the target service being unavailable.",
+                        "code": "forward_request_failed",
+                        "status": 500
+                      }
+                    },
+                    "description": "Request forwarding failed"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Forward GET request",
+        "description": "Forward a GET request to a third-party API (like OpenAI, Anthropic, etc.) with usage tracking and billing.",
+        "security": [
+          {
+            "ForwardAuth": []
+          },
+          {
+            "ForwardAuthAnthropic": []
+          },
+          {
+            "ForwardAuthGoogle": []
+          },
+          {
+            "ForwardAuthGoogleQueryParam": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "u",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "https://api.openai.com/v1/models",
+            "description": "The API endpoint URL to forward the request to"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response from the provider API",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Response from the provider API",
+                  "additionalProperties": true
+                },
+                "examples": {
+                  "models-response": {
+                    "summary": "Example response from /v1/models endpoint",
+                    "value": {
+                      "object": "list",
+                      "data": [
+                        {
+                          "id": "gpt-4-1106-preview",
+                          "object": "model",
+                          "created": 1699066192,
+                          "owned_by": "openai"
+                        },
+                        {
+                          "id": "gpt-3.5-turbo",
+                          "object": "model",
+                          "created": 1677610602,
+                          "owned_by": "openai"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "URL parameter is missing. Please include the target URL using the ?u=<url> query parameter.",
+                        "code": "forward_url_missing",
+                        "status": 400
+                      }
+                    },
+                    "description": "URL parameter is missing"
+                  },
+                  {
+                    "value": {
+                      "error": {
+                        "message": "This endpoint is not supported. Please refer to our documentation for a list of available endpoints.",
+                        "code": "forward_endpoint_not_supported",
+                        "status": 400
+                      }
+                    },
+                    "description": "Endpoint not supported"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Forward token is missing. Please provide your token using one of these methods: 'Authorization: Bearer <key>' header, 'x-api-key: <key>' header, 'key' query parameter, or 'x-goog-api-key: <key>' header.",
+                        "code": "forward_token_missing",
+                        "status": 401
+                      }
+                    },
+                    "description": "Forward token missing"
+                  }
+                ]
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Your connection has reached its usage limit. Please top up your credit balance to continue using this service.",
+                        "code": "forward_token_connection_limit_reached",
+                        "status": 402
+                      }
+                    },
+                    "description": "Connection usage limit reached"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Failed to forward your request to the target service. This may be due to network issues or the target service being unavailable.",
+                        "code": "forward_request_failed",
+                        "status": 500
+                      }
+                    },
+                    "description": "Request forwarding failed"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/requests": {
+      "get": {
+        "summary": "List requests",
+        "description": "Get a paginated list of AI API requests with optional filtering by connection or product",
+        "security": [
+          {
+            "Auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Cursor for pagination"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1,
+              "maximum": 100
+            },
+            "description": "Maximum number of results to return (1-100)",
+            "example": 50
+          },
+          {
+            "name": "connection_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter requests by connection ID",
+            "example": "con_01JZM06X45REWJC5C5WJ7WRWYP"
+          },
+          {
+            "name": "product_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter requests by product ID",
+            "example": "prd_01JZM06X45Q77GSG0AANXHHXWX"
+          },
+          {
+            "name": "metadata_filters",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter requests by metadata key-value pairs. Must be a JSON array of [key, value] pairs, where both key and value are strings. Keys must contain only ASCII letters, numbers, and underscores (no spaces or special characters). Example: [['user_id', '123'], ['session_id', 'abc']]",
+            "example": "[[\"user_id\", \"123\"], [\"session_id\", \"abc\"]]"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Request"
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean",
+                      "description": "Whether there are more results available"
+                    },
+                    "next_cursor": {
+                      "type": "string",
+                      "description": "Cursor to use for the next page of results, if has_more is true"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "has_more"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "The provided cursor is invalid. Please check that you're using a cursor returned from a previous request.",
+                        "code": "cursor_invalid_format",
+                        "status": 400
+                      }
+                    },
+                    "description": "Invalid cursor format"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Authorization header is required. Please include an 'Authorization' header with your request.",
+                        "code": "auth_header_missing",
+                        "status": 401
+                      }
+                    },
+                    "description": "Authorization header missing"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "An internal server error occurred while processing your request.",
+                        "code": "rest_internal_server_error",
+                        "status": 500
+                      }
+                    },
+                    "description": "Internal server error"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a request",
+        "description": "Create a new API request with usage tracking and billing. This endpoint allows you to manually create requests that were made outside of the forward endpoint.",
+        "security": [
+          {
+            "Auth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "request_id",
+                  "connection_secret",
+                  "product_secret"
+                ],
+                "properties": {
+                  "request_id": {
+                    "type": "string",
+                    "description": "Unique identifier for the AI API request",
+                    "example": "req_01JZM06X45CAKCXTW3CH4T0D5X"
+                  },
+                  "connection_secret": {
+                    "type": "string",
+                    "description": "Secret key for the connection that made this request",
+                    "example": "cons_live_LRM2Lo3FafCtt7vb4guJnKL-YbKzohkhaCmZkxbBKr1foh1VrwrFvI"
+                  },
+                  "product_secret": {
+                    "type": "string",
+                    "description": "Secret key for the product configuration used for this request",
+                    "example": "cons_live_zUo9QA7PCClBolxPEHmwhUIrgtNEouVjf5FAy8YyMjWiuCWo7PgdAG"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "description": "Optional metadata to associate with the request. Must be a JSON object with up to 100 key-value pairs, where both keys and values are strings between 1-255 characters. Keys must contain only ASCII letters, numbers, and underscores (no spaces or special characters).",
+                    "example": {
+                      "user_id": "123456",
+                      "session_id": "abc123"
+                    }
+                  },
+                  "input_tokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of input/prompt tokens used in the request",
+                    "example": 845
+                  },
+                  "output_tokens": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of output/completion tokens generated in the response",
+                    "example": 412
+                  },
+                  "input_characters": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of input characters used in the request",
+                    "example": 5000
+                  },
+                  "output_characters": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of output characters generated in the response",
+                    "example": 2500
+                  },
+                  "input_seconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of seconds spent processing the input",
+                    "example": 2
+                  },
+                  "output_seconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of seconds spent generating the output",
+                    "example": 5
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request created or retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Request"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Request body contains invalid JSON. Please check your request body syntax and ensure it's properly formatted.",
+                        "code": "body_json_parse_error",
+                        "status": 400
+                      }
+                    },
+                    "description": "Invalid JSON in request body"
+                  },
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Request body doesn't match the required schema. Please refer to the API documentation for the correct structure.",
+                        "code": "body_schema_validation_failed",
+                        "status": 400
+                      }
+                    },
+                    "description": "Invalid request body schema"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Authorization header is required. Please include an 'Authorization' header with your request.",
+                        "code": "auth_header_missing",
+                        "status": 401
+                      }
+                    },
+                    "description": "Authorization header missing"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "An internal server error occurred while processing your request.",
+                        "code": "rest_internal_server_error",
+                        "status": 500
+                      }
+                    },
+                    "description": "Internal server error"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/requests/{request_id}": {
+      "get": {
+        "summary": "Get a request",
+        "description": "Get details of a specific API request",
+        "security": [
+          {
+            "Auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Request ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Request"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Authorization header is required. Please include an 'Authorization' header with your request.",
+                        "code": "auth_header_missing",
+                        "status": 401
+                      }
+                    },
+                    "description": "Authorization header missing"
+                  }
+                ]
+              }
+            }
+          },
+          "404": {
+            "description": "Request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Request not found.",
+                        "code": "request_not_found",
+                        "status": 404
+                      }
+                    },
+                    "description": "Request not found"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "An internal server error occurred while processing your request.",
+                        "code": "rest_internal_server_error",
+                        "status": 500
+                      }
+                    },
+                    "description": "Internal server error"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/usage": {
+      "get": {
+        "summary": "Get usage statistics",
+        "description": "Get daily aggregated usage statistics for a specific time period with optional filtering by connection or product. Helps analyze AI usage patterns and costs.",
+        "security": [
+          {
+            "Auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Start of the usage period (inclusive) in ISO 8601 format, this also sets the timezone of the grouped usage data",
+            "example": "2023-05-01T00:00:00Z"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "End of the usage period (inclusive) in ISO 8601 format, if not specified, usage data will be returned up to the current time",
+            "example": "2023-05-31T23:59:59Z"
+          },
+          {
+            "name": "connection_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter usage by connection ID",
+            "example": "con_01JZM06X45123VMRRG7FZT46EC"
+          },
+          {
+            "name": "product_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter usage by product ID",
+            "example": "prd_01JZM06X451Z34GV3KKW681QRQ"
+          },
+          {
+            "name": "metadata_filters",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter usage by metadata key-value pairs. Must be a JSON array of [key, value] pairs, where both key and value are strings. Keys must contain only ASCII letters, numbers, and underscores (no spaces or special characters). Example: [['user_id', '123'], ['session_id', 'abc']]",
+            "example": "[[\"user_id\", \"123\"], [\"session_id\", \"abc\"]]"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Usage statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Start date is required.",
+                        "code": "usage_start_date_missing",
+                        "status": 400
+                      }
+                    },
+                    "description": "Start date missing"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Authorization header is required. Please include an 'Authorization' header with your request.",
+                        "code": "auth_header_missing",
+                        "status": 401
+                      }
+                    },
+                    "description": "Authorization header missing"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "An internal server error occurred while processing your request.",
+                        "code": "rest_internal_server_error",
+                        "status": 500
+                      }
+                    },
+                    "description": "Internal server error"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checkout_sessions": {
+      "post": {
+        "summary": "Create a checkout session",
+        "description": "Create a new checkout session that allows end users to either create a new wallet connection (onboarding) or add funds to an existing connection (topup). After creating the session, direct your users to the Lava checkout page with the checkout_session_token.",
+        "security": [
+          {
+            "Auth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCheckoutSession"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Checkout session created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Request body contains invalid JSON. Please check your request body syntax and ensure it's properly formatted.",
+                        "code": "body_json_parse_error",
+                        "status": 400
+                      }
+                    },
+                    "description": "Invalid JSON in request body"
+                  },
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Request body doesn't match the required schema. Please refer to the API documentation for the correct structure.",
+                        "code": "body_schema_validation_failed",
+                        "status": 400
+                      }
+                    },
+                    "description": "Invalid request body schema"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Authorization header is required. Please include an 'Authorization' header with your request.",
+                        "code": "auth_header_missing",
+                        "status": 401
+                      }
+                    },
+                    "description": "Authorization header missing"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "An internal server error occurred while processing your request.",
+                        "code": "rest_internal_server_error",
+                        "status": 500
+                      }
+                    },
+                    "description": "Internal server error"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List checkout sessions",
+        "description": "List all checkout sessions for the authenticated merchant with pagination support and optional filtering",
+        "security": [
+          {
+            "Auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Pagination cursor from a previous response"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1,
+              "maximum": 100
+            },
+            "description": "Maximum number of results to return (1-100)",
+            "example": 25
+          },
+          {
+            "name": "reference_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter checkout sessions by your custom reference ID",
+            "example": "customer_123456"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of checkout sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CheckoutSession"
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "next_cursor": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "The provided cursor is invalid. Please check that you're using a cursor returned from a previous request.",
+                        "code": "cursor_invalid_format",
+                        "status": 400
+                      }
+                    },
+                    "description": "Invalid cursor format"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Authorization header is required. Please include an 'Authorization' header with your request.",
+                        "code": "auth_header_missing",
+                        "status": 401
+                      }
+                    },
+                    "description": "Authorization header missing"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "An internal server error occurred while processing your request.",
+                        "code": "rest_internal_server_error",
+                        "status": 500
+                      }
+                    },
+                    "description": "Internal server error"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checkout_sessions/{checkout_session_id}": {
+      "get": {
+        "summary": "Get a checkout session",
+        "description": "Get details of a specific checkout session",
+        "security": [
+          {
+            "Auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "checkout_session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Checkout Session ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Checkout session details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSession"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Authorization header is required. Please include an 'Authorization' header with your request.",
+                        "code": "auth_header_missing",
+                        "status": 401
+                      }
+                    },
+                    "description": "Authorization header missing"
+                  }
+                ]
+              }
+            }
+          },
+          "404": {
+            "description": "Checkout session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Checkout session not found.",
+                        "code": "checkout_session_not_found",
+                        "status": 404
+                      }
+                    },
+                    "description": "Checkout session not found"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "An internal server error occurred while processing your request.",
+                        "code": "rest_internal_server_error",
+                        "status": 500
+                      }
+                    },
+                    "description": "Internal server error"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/connections": {
+      "get": {
+        "summary": "List connections",
+        "description": "List all wallet connections for the authenticated merchant with pagination support and optional filtering",
+        "security": [
+          {
+            "Auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Pagination cursor from a previous response"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1,
+              "maximum": 100
+            },
+            "description": "Maximum number of results to return (1-100)",
+            "example": 25
+          },
+          {
+            "name": "reference_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter connections by your custom reference ID",
+            "example": "customer_123456"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of connections",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Connection"
+                      }
+                    },
+                    "has_more": {
+                      "type": "boolean"
+                    },
+                    "next_cursor": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "The provided cursor is invalid. Please check that you're using a cursor returned from a previous request.",
+                        "code": "cursor_invalid_format",
+                        "status": 400
+                      }
+                    },
+                    "description": "Invalid cursor format"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Authorization header is required. Please include an 'Authorization' header with your request.",
+                        "code": "auth_header_missing",
+                        "status": 401
+                      }
+                    },
+                    "description": "Authorization header missing"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "An internal server error occurred while processing your request.",
+                        "code": "rest_internal_server_error",
+                        "status": 500
+                      }
+                    },
+                    "description": "Internal server error"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/connections/{connection_id}": {
+      "get": {
+        "summary": "Get a connection",
+        "description": "Get a connection by ID",
+        "security": [
+          {
+            "Auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Connection ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Connection details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Authorization header is required. Please include an 'Authorization' header with your request.",
+                        "code": "auth_header_missing",
+                        "status": 401
+                      }
+                    },
+                    "description": "Authorization header missing"
+                  }
+                ]
+              }
+            }
+          },
+          "404": {
+            "description": "Connection not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Connection not found.",
+                        "code": "connection_not_found",
+                        "status": 404
+                      }
+                    },
+                    "description": "Connection not found"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "An internal server error occurred while processing your request.",
+                        "code": "rest_internal_server_error",
+                        "status": 500
+                      }
+                    },
+                    "description": "Internal server error"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a connection",
+        "description": "Delete a connection by ID",
+        "security": [
+          {
+            "Auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Connection ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Connection deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Authorization header is required. Please include an 'Authorization' header with your request.",
+                        "code": "auth_header_missing",
+                        "status": 401
+                      }
+                    },
+                    "description": "Authorization header missing"
+                  }
+                ]
+              }
+            }
+          },
+          "404": {
+            "description": "Connection not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "Connection not found.",
+                        "code": "connection_not_found",
+                        "status": 404
+                      }
+                    },
+                    "description": "Connection not found"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "examples": [
+                  {
+                    "value": {
+                      "error": {
+                        "message": "An internal server error occurred while processing your request.",
+                        "code": "rest_internal_server_error",
+                        "status": 500
+                      }
+                    },
+                    "description": "Internal server error"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
