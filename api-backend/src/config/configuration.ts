@@ -65,9 +65,15 @@ export default () => ({
   // LavaPayments Configuration
   lavapayments: {
     secretKey: process.env.LAVAPAYMENTS_SECRET_KEY,
+    productSecret: process.env.LAVAPAYMENTS_PRODUCT_SECRET,
+    baseFeeProductSecret: process.env.LAVAPAYMENTS_BASE_FEE_PRODUCT_SECRET,
     baseUrl:
       process.env.LAVAPAYMENTS_BASE_URL || 'https://api.lavapayments.com/v1',
     webhookSecret: process.env.LAVAPAYMENTS_WEBHOOK_SECRET,
-    productSecret: process.env.LAVA_PRODUCT_SECRET,
+    usageProductSecret: process.env.LAVA_USAGE_PRODUCT_SECRET,
+    basePriceProductSecret: process.env.LAVA_BASE_PRICE_PRODUCT_SECRET,
+  },
+  recording: {
+    costPerMinute: parseFloat(process.env.RECORDING_COST_PER_MINUTE || '0.4'),
   },
 });

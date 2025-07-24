@@ -4,6 +4,7 @@ import { StatsModule } from './stats/stats.module';
 import { RecordingsModule } from './recordings/recordings.module';
 import { CustomerApiKeysModule } from './api-keys/api-keys.module';
 import { BillingModule } from './billing/billing.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { BillingModule } from './billing/billing.module';
     RecordingsModule,
     CustomerApiKeysModule,
     BillingModule,
+    PaymentsModule,
   ],
   exports: [
     CustomerAuthModule,
@@ -19,6 +21,7 @@ import { BillingModule } from './billing/billing.module';
     RecordingsModule,
     CustomerApiKeysModule,
     BillingModule,
+    PaymentsModule,
   ],
 })
 export class CustomerModulesModule {}

@@ -8,6 +8,12 @@ import {
   CustomerApiKeyStatus,
 } from '../../database/models/customer/customer-api-key.model';
 import { RecordingsService } from '../recordings/recordings.service';
+import {
+  CustomerPayment,
+  CustomerPaymentType,
+} from '../../database/models/customer/customer-payment.model';
+import { ConfigService } from '@nestjs/config';
+import { CustomerBotStatus } from '../../database/models/customer/customer-bot.model';
 
 export interface DashboardStats {
   hoursRecorded: number;
@@ -38,6 +44,9 @@ export class StatsService {
     private readonly customerBotModel: typeof CustomerBot,
     @InjectModel(CustomerApiKey)
     private readonly customerApiKeyModel: typeof CustomerApiKey,
+    @InjectModel(CustomerPayment)
+    private readonly customerPaymentModel: typeof CustomerPayment,
+    private readonly configService: ConfigService,
     private readonly recordingsService: RecordingsService,
   ) {}
 
@@ -50,6 +59,42 @@ export class StatsService {
     const usage = await this.customerUsageModel.findOne({
       where: { customerId, periodKey: currentMonth },
     });
+
+    // Calculate hoursRecorded from completed CustomerBot records for this month
+    const botsThisMonth = await this.customerBotModel.findAll({
+      where: {
+        customerId,
+        status: CustomerBotStatus.COMPLETED,
+        startTime: { $ne: null },
+        endTime: { $ne: null },
+      },
+    });
+    const hoursRecorded = botsThisMonth
+      .filter((bot) => {
+        const end = bot.endTime;
+        if (!end) return false;
+        const endMonth = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}`;
+        return endMonth === currentMonth;
+      })
+      .reduce((sum, bot) => {
+        const start = bot.startTime;
+        const end = bot.endTime;
+        if (!start || !end) return sum;
+        const durationHours =
+          (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        return sum + (durationHours > 0 ? durationHours : 0);
+      }, 0);
+    // Monthly billing from payments (keep this if you want to show cost)
+    const allPayments = await this.customerPaymentModel.findAll({
+      where: {
+        customerId,
+        periodKey: currentMonth,
+      },
+    });
+    const monthlyBilling = allPayments.reduce(
+      (sum, p) => sum + Number(p.amount),
+      0,
+    );
 
     // Get active recordings count
     const activeRecordings = await this.customerBotModel.count({
@@ -86,10 +131,10 @@ export class StatsService {
     });
 
     return {
-      hoursRecorded: usage?.recordingHours || 0,
+      hoursRecorded,
       activeRecordings,
       apiKeysCount,
-      monthlyBilling: usage?.finalAmount || 0,
+      monthlyBilling,
       storageUsed: usage?.storageUsedGB || 0,
       totalRecordings,
       recentRecordings,
@@ -173,13 +218,41 @@ export class StatsService {
       order: [['periodStartDate', 'ASC']],
     });
 
-    return usage.map((u) => ({
-      month: u.periodKey,
-      hoursRecorded: u.recordingHours,
-      storageUsed: u.storageUsedGB,
-      apiCalls: u.apiCalls,
-      cost: u.finalAmount,
-    }));
+    // Get all payments for the customer in the date range
+    const allPayments = await this.customerPaymentModel.findAll({
+      where: {
+        customerId,
+      },
+    });
+    const ratePerMinute =
+      this.configService.get('recording.costPerMinute') ?? 0.4;
+
+    return usage.map((u) => {
+      // Find all payments for this periodKey
+      const paymentsForMonth = allPayments.filter(
+        (p) => p.periodKey === u.periodKey,
+      );
+      // Sum all payments for this month
+      const cost = paymentsForMonth.reduce(
+        (sum, p) => sum + Number(p.amount),
+        0,
+      );
+      // Sum all usage payments for this month for hoursRecorded
+      const usagePayments = paymentsForMonth.filter(
+        (p) => p.type === CustomerPaymentType.USAGE,
+      );
+      const hoursRecorded = usagePayments.reduce(
+        (sum, p) => sum + Number(p.amount) / ratePerMinute / 60,
+        0,
+      );
+      return {
+        month: u.periodKey,
+        hoursRecorded,
+        storageUsed: u.storageUsedGB,
+        apiCalls: u.apiCalls,
+        cost,
+      };
+    });
   }
 
   /**

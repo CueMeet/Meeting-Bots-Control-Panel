@@ -8,6 +8,7 @@ import { StatsService } from './stats.service';
 import { StatsController } from './stats.controller';
 import { CustomerAuthModule } from '../auth/auth.module';
 import { RecordingsModule } from '../recordings/recordings.module';
+import { CustomerPayment } from '../../database/models/customer/customer-payment.model';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { RecordingsModule } from '../recordings/recordings.module';
       CustomerUsage,
       CustomerBot,
       CustomerApiKey,
+      CustomerPayment,
     ]),
     CustomerAuthModule,
     RecordingsModule,

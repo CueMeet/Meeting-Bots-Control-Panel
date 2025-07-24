@@ -140,6 +140,19 @@ export class CustomerBot extends Model<CustomerBot> {
   })
   actualEndedAt: Date;
 
+  // Recording timing for billing
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+  })
+  startTime: Date; // When the bot actually started recording
+
+  @Column({
+    type: DataType.DATE,
+    allowNull: true,
+  })
+  endTime: Date; // When the bot finished recording
+
   // Recording Details
   @Column({
     type: DataType.INTEGER,

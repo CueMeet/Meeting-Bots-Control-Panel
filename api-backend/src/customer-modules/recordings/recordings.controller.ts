@@ -99,27 +99,6 @@ export class RecordingsController {
   }
 
   /**
-   * Stop recording
-   */
-  @Post(':id/stop')
-  @HttpCode(HttpStatus.OK)
-  async stopRecording(
-    @GetCustomer() customer: Customer,
-    @Param('id') recordingId: string,
-  ) {
-    const recording = await this.recordingsService.stopRecording(
-      customer.id,
-      recordingId,
-    );
-
-    return {
-      success: true,
-      message: 'Recording stopped successfully',
-      data: recording,
-    };
-  }
-
-  /**
    * Delete recording
    */
   @Delete(':id')

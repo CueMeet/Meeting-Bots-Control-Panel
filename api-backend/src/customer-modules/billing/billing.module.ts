@@ -8,15 +8,22 @@ import { CustomerAuthModule } from '../auth/auth.module';
 import { CustomerUsage } from '../../database/models/customer/customer-usage.model';
 import { CustomerBot } from '../../database/models/customer/customer-bot.model';
 import { LavaWebhookController } from './lava-webhook.controller';
+import { MonthlySubscriptionService } from './monthly-subscription.service';
+import { CustomerPayment } from '../../database/models/customer/customer-payment.model';
 
 @Module({
   imports: [
     ConfigModule,
-    SequelizeModule.forFeature([Customer, CustomerBot, CustomerUsage]),
+    SequelizeModule.forFeature([
+      Customer,
+      CustomerBot,
+      CustomerUsage,
+      CustomerPayment,
+    ]),
     CustomerAuthModule,
   ],
-  providers: [LavaPaymentsService],
+  providers: [LavaPaymentsService, MonthlySubscriptionService],
   controllers: [BillingController, LavaWebhookController],
-  exports: [LavaPaymentsService],
+  exports: [LavaPaymentsService, MonthlySubscriptionService],
 })
 export class BillingModule {}
